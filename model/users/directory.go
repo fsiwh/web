@@ -52,10 +52,36 @@ type Page struct {
 	Number, Pages, Total int
 }
 
+type DirectoryFilter struct {
+	Query  string
+	Roles  []string
+	Status string
+}
+
 // Search applies the shared account search and page bounds. Empty results have
 // one valid, empty page. Out-of-range page numbers are rejected, not clamped.
 func (d *Directory) Search(query string, number int) (Page, bool) {
-	records := search(d.users, query)
+	return d.Filter(DirectoryFilter{Query: query}, number)
+}
+
+func (d *Directory) Filter(filter DirectoryFilter, number int) (Page, bool) {
+	records := search(d.users, filter.Query)
+	records = slices.DeleteFunc(records, func(user User) bool {
+		if len(filter.Roles) > 0 && !slices.Contains(filter.Roles, user.Role) {
+			return true
+		}
+		switch filter.Status {
+		case "verified":
+			return !user.Verified
+		case "unverified":
+			return user.Verified
+		case "active":
+			return !user.Active
+		case "inactive":
+			return user.Active
+		}
+		return false
+	})
 	page := Page{Number: number, Pages: max(1, (len(records)+PerPage-1)/PerPage), Total: len(records)}
 	if number < 1 || number > page.Pages {
 		return page, false
