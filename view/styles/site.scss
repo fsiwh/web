@@ -1072,3 +1072,13 @@ a[href^="mailto:"] {
     width: auto;
   }
 }
+
+.app-audit-table {
+  overflow-x: auto;
+
+  th,
+  td {
+    min-width: 120px;
+    overflow-wrap: anywhere;
+  }
+}

@@ -309,6 +309,40 @@
       {{ end }}
     {{ end }}
 
+    {{ if eq .View "audit" }}
+      <p class="govuk-body">Hier findest du die protokollierten Aktivitäten und ihre Ergebnisse. Die neuesten Einträge stehen zuerst.</p>
+      {{ if .AuditEntries }}
+        <div class="app-audit-table">
+          <table class="govuk-table">
+            <caption class="govuk-visually-hidden">Aktivitäten</caption>
+            <thead class="govuk-table__head">
+              <tr class="govuk-table__row">
+                <th class="govuk-table__header" scope="col">Zeitpunkt</th>
+                <th class="govuk-table__header" scope="col">Ereignis</th>
+                <th class="govuk-table__header" scope="col">Ergebnis</th>
+                <th class="govuk-table__header" scope="col">Ausgeführt von</th>
+                <th class="govuk-table__header" scope="col">Betroffenes Konto</th>
+              </tr>
+            </thead>
+            <tbody class="govuk-table__body">
+              {{ range .AuditEntries }}
+                <tr class="govuk-table__row">
+                  <td class="govuk-table__cell"><time datetime="{{ .OccurredAt }}">{{ .TimeLabel }}</time></td>
+                  <th class="govuk-table__header" scope="row">{{ .Event }}</th>
+                  <td class="govuk-table__cell">{{ .Outcome }}</td>
+                  <td class="govuk-table__cell">{{ template "audit-account" .Actor }}</td>
+                  <td class="govuk-table__cell">{{ template "audit-account" .User }}</td>
+                </tr>
+              {{ end }}
+            </tbody>
+          </table>
+        </div>
+        {{ template "list-pagination" .AuditPagination }}
+      {{ else }}
+        <p class="govuk-body">Es wurden noch keine Aktivitäten protokolliert.</p>
+      {{ end }}
+    {{ end }}
+
     {{ if eq .View "settings" }}
       <p class="govuk-body">
         Hier verwaltest du die allgemeinen Angaben zur Fachschaft – von Kontaktdaten und
@@ -975,4 +1009,8 @@
   <strong class="govuk-tag {{ if .Verified }}govuk-tag--green{{ else }}govuk-tag--grey{{ end }}"
     >{{ if .Verified }}Bestätigt{{ else }}Nicht bestätigt{{ end }}</strong
   >
+{{ end }}
+
+{{ define "audit-account" }}
+  {{ if .URL }}<a class="govuk-link" href="{{ .URL }}">{{ .Label }}</a>{{ else }}{{ .Label }}{{ end }}
 {{ end }}

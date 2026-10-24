@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/fachschaftinformatik/web/internal/audit"
 	"github.com/fachschaftinformatik/web/internal/database"
 	"github.com/fachschaftinformatik/web/internal/testdb"
 	"github.com/fachschaftinformatik/web/model/events"
@@ -106,7 +107,7 @@ func persistentServices(t *testing.T, db *sql.DB, storage exams.Storage) Service
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Services{Organization: org, Users: users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}), Exams: exams.NewService(db, storage), Members: team, Meetings: meetingStore, Posts: posts.NewService(db), Media: media.NewService(db, provider), Events: events.NewService(db, provider)}
+	return Services{Audit: audit.NewStore(db), Organization: org, Users: users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}), Exams: exams.NewService(db, storage), Members: team, Meetings: meetingStore, Posts: posts.NewService(db), Media: media.NewService(db, provider), Events: events.NewService(db, provider)}
 }
 
 func historicalTestPDF(file string) []byte { return []byte("%PDF-1.4\n" + file + "\n%%EOF") }

@@ -149,6 +149,7 @@ func registerAdmin(c *Handler, register routeRegister) {
 		forms(register, path, policy, handler)
 	}
 	register("GET "+urls.AdminPath, reviewer, c.Admin)
+	register("GET "+urls.AdminAuditPath, admin, section("audit", c.Admin))
 	for _, item := range []struct{ name, path string }{{"settings", urls.AdminSettingsPath}, {"members", urls.AdminMembersPath}, {"roles", urls.AdminRolesPath}, {"meetings", urls.AdminMeetingsPath}, {"users", urls.AdminUsersPath}} {
 		register("GET "+item.path, admin, section(item.name, c.Admin))
 	}
