@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fachschaftinformatik/web/internal/audit"
+
 	"github.com/fachschaftinformatik/web/model/events"
 	"github.com/fachschaftinformatik/web/model/exams"
 	"github.com/fachschaftinformatik/web/model/media"
@@ -25,6 +27,9 @@ func (c *Handler) adminRender(w http.ResponseWriter, title string, a *view.Admin
 	p := view.Page{Title: title, Active: "admin", Admin: a}
 	if a.View == "users" && a.Pages > 1 {
 		p.DocumentTitle = fmt.Sprintf("Benutzerkonten – Seite %d von %d", a.Page, a.Pages)
+	}
+	if a.View == "audit" && a.Pages > 1 {
+		p.DocumentTitle = fmt.Sprintf("Aktivitäten – Seite %d von %d", a.Page, a.Pages)
 	}
 	if a.HasErrors() {
 		p.DocumentTitle = "Fehler: " + title
@@ -64,6 +69,7 @@ type Handler struct {
 	posts         *posts.Service
 	media         *media.Service
 	events        *events.Service
+	audit         *audit.Store
 }
 
 type Services struct {
@@ -77,11 +83,12 @@ type Services struct {
 	Posts         *posts.Service
 	Media         *media.Service
 	Events        *events.Service
+	Audit         *audit.Store
 }
 
 // New constructs the HTML application with its required dependencies.
 func New(services Services, secureCookies bool) (*Handler, error) {
-	if services.Organization == nil || services.Users == nil || services.Exams == nil || services.Members == nil || services.Meetings == nil || services.Posts == nil || services.Media == nil || services.Events == nil {
+	if services.Organization == nil || services.Users == nil || services.Exams == nil || services.Members == nil || services.Meetings == nil || services.Posts == nil || services.Media == nil || services.Events == nil || services.Audit == nil {
 		return nil, errors.New("application services are incomplete")
 	}
 	views, err := view.NewRenderer()
@@ -90,7 +97,7 @@ func New(services Services, secureCookies bool) (*Handler, error) {
 	}
 	c := &Handler{buildVersion: services.BuildVersion, buildRevision: services.BuildRevision, views: views, secureCookies: secureCookies, organization: services.Organization,
 		identity: services.Users, exams: services.Exams, members: services.Members,
-		meetings: services.Meetings, posts: services.Posts, media: services.Media, events: services.Events}
+		meetings: services.Meetings, posts: services.Posts, media: services.Media, events: services.Events, audit: services.Audit}
 	c.router = c.routes()
 	return c, nil
 }

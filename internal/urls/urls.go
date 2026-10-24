@@ -65,6 +65,7 @@ const (
 	AdminRolesPath             = "/admin/roles"
 	AdminMeetingsPath          = "/admin/meetings"
 	AdminUsersPath             = "/admin/users"
+	AdminAuditPath             = "/admin/audit"
 	AdminSubmissionsPath       = "/admin/submissions"
 	AdminMemberPattern         = "/admin/members/{id}"
 	AdminRolePattern           = "/admin/roles/{id}"

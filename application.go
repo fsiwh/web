@@ -96,7 +96,9 @@ func newApplication(ctx context.Context, databasePath, blobPath string) (_ *appl
 	if cfg.AppVersion != "" {
 		buildVersion = cfg.AppVersion
 	}
+	auditStore := audit.NewStore(db)
 	app.handler, err = site.New(site.Services{
+		Audit:         auditStore,
 		BuildVersion:  buildVersion,
 		BuildRevision: Revision,
 		Users:         identity, Exams: examDocuments, Members: team, Meetings: publications, Organization: org,
@@ -105,7 +107,6 @@ func newApplication(ctx context.Context, databasePath, blobPath string) (_ *appl
 	if err != nil {
 		return nil, err
 	}
-	auditStore := audit.NewStore(db)
 	router := app.handler
 	app.handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		router.ServeHTTP(w, r.WithContext(audit.WithRecorder(r.Context(), auditStore)))
