@@ -156,7 +156,7 @@
 
     {{ if eq .View "users" }}
       <form action="/admin/users" method="get" class="govuk-!-margin-bottom-6">
-        <div class="govuk-form-group">
+        <div class="govuk-form-group govuk-!-margin-bottom-3">
           <label class="govuk-label" for="user-search">Name oder E-Mail-Adresse</label
           ><input
             class="govuk-input"
@@ -166,15 +166,28 @@
             value="{{ .Query }}"
           />
         </div>
-        <button
-          class="govuk-button govuk-button--secondary"
-          data-module="govuk-button"
-          type="submit"
-        >
-          Suchen
-        </button>
-        {{ if .Query }}
-          <a class="govuk-link govuk-!-margin-left-3" href="/admin/users">Suche zurücksetzen</a>
+        <div class="app-user-filters">
+          <div class="govuk-form-group">
+              <label class="govuk-label" for="user-role">Berechtigung</label>
+              <select class="govuk-select" id="user-role" name="role">
+                <option value="">Alle</option>
+                {{ range .UserRoleOptions }}
+                  <option value="{{ .Value }}" {{ if .Selected }}selected{{ end }}>{{ .Label }}</option>
+                {{ end }}
+              </select>
+          </div>
+          <div class="govuk-form-group">
+              <label class="govuk-label" for="user-status">Status</label>
+              <select class="govuk-select" id="user-status" name="status">
+                {{ range .UserStatusOptions }}
+                  <option value="{{ .Value }}" {{ if .Selected }}selected{{ end }}>{{ .Label }}</option>
+                {{ end }}
+              </select>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Anwenden</button>
+        </div>
+        {{ if .UserFiltersActive }}
+          <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-0"><a class="govuk-link" href="/admin/users">Suche und Filter zurücksetzen</a></p>
         {{ end }}
       </form>
       <h2 class="govuk-heading-m">{{ .Total }} Benutzerkonten gefunden</h2>
@@ -216,13 +229,7 @@
                 </td>
                 <td class="govuk-table__cell" role="cell">
                   <span class="app-exams-upload-label" aria-hidden="true">Status</span
-                  ><span
-                    >{{ template "email-status" . }}{{ if eq .Status "Inaktiv" }}
-                      <p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">
-                        Konto inaktiv
-                      </p>
-                    {{ end }}</span
-                  >
+                  ><span>{{ template "email-status" . }}</span>
                 </td>
               </tr>
             {{ end }}
@@ -303,7 +310,10 @@
     {{ end }}
 
     {{ if eq .View "settings" }}
-      <p class="govuk-body">Änderungen gelten sofort für Website und E-Mails.</p>
+      <p class="govuk-body">
+        Hier verwaltest du die allgemeinen Angaben zur Fachschaft – von Kontaktdaten und
+        Zuständigkeiten bis zu rechtlichen Informationen.
+      </p>
       <h2 class="govuk-heading-m">Angaben zur Organisation</h2>
       <ul class="govuk-task-list">
         {{ range .OrganizationSettings }}

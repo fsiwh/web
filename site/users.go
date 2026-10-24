@@ -66,8 +66,16 @@ func (c *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.View, a.Query = "users", strings.TrimSpace(r.URL.Query().Get("search"))
+		switch role := r.URL.Query().Get("role"); role {
+		case "admin", "editor", "user":
+			a.UserRoles = []string{role}
+		}
+		switch status := r.URL.Query().Get("status"); status {
+		case "active", "inactive", "verified", "unverified":
+			a.UserStatus = status
+		}
 		a.Page = requestedPage(r)
-		page, ok := directory.Search(a.Query, a.Page)
+		page, ok := directory.Filter(users.DirectoryFilter{Query: a.Query, Roles: a.UserRoles, Status: a.UserStatus}, a.Page)
 		if !c.validPageRange(w, r, page.Total, users.PerPage) {
 			return
 		}

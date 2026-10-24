@@ -48,6 +48,8 @@ type AdminPage struct {
 	Members                                                      []AdminMemberRow
 	Roles                                                        []AdminRoleRow
 	Users                                                        []User
+	UserRoles                                                    []string
+	UserStatus                                                   string
 	User                                                         *User
 	Meetings                                                     []Meeting
 	Publication                                                  *Publication
@@ -81,6 +83,12 @@ func (a AdminPage) SubmissionList() SubmissionListPage {
 
 func (a AdminPage) UserPageURL(page int) string {
 	q := url.Values{}
+	for _, role := range a.UserRoles {
+		q.Add("role", role)
+	}
+	if a.UserStatus != "" {
+		q.Set("status", a.UserStatus)
+	}
 	if a.Query != "" {
 		q.Set("search", a.Query)
 	}
@@ -91,6 +99,30 @@ func (a AdminPage) UserPageURL(page int) string {
 		return "/admin/users"
 	}
 	return "/admin/users?" + q.Encode()
+}
+
+func (a AdminPage) UserFiltersActive() bool {
+	return a.Query != "" || len(a.UserRoles) > 0 || a.UserStatus != ""
+}
+
+func (a AdminPage) UserRoleOptions() []AdminOption {
+	options := []AdminOption{{Value: "admin", Label: "Administration"}, {Value: "editor", Label: "Redaktion"}, {Value: "user", Label: "Studierende"}}
+	for i := range options {
+		for _, role := range a.UserRoles {
+			if role == options[i].Value {
+				options[i].Selected = true
+			}
+		}
+	}
+	return options
+}
+
+func (a AdminPage) UserStatusOptions() []AdminOption {
+	options := []AdminOption{{Value: "", Label: "Alle"}, {Value: "active", Label: "Aktiv"}, {Value: "verified", Label: "Bestätigt"}, {Value: "inactive", Label: "Inaktiv"}, {Value: "unverified", Label: "Nicht bestätigt"}}
+	for i := range options {
+		options[i].Selected = options[i].Value == a.UserStatus
+	}
+	return options
 }
 
 func (a AdminPage) Pagination() []PaginationItem {

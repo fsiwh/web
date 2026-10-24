@@ -472,6 +472,7 @@
 }
 
 .app-register-select,
+.app-user-filters .govuk-select,
 .app-editor-format {
   width: 100%;
   min-width: 0;
@@ -623,6 +624,7 @@
 
 @media (forced-colors: active) {
   .app-register-select,
+  .app-user-filters .govuk-select,
   .app-editor-format {
     appearance: auto;
     background-image: none;
@@ -1048,4 +1050,25 @@
 /* Long public contact addresses must also fit at mobile widths and zoom. */
 a[href^="mailto:"] {
   overflow-wrap: anywhere;
+}
+.app-user-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 15px;
+
+  .govuk-form-group,
+  .govuk-button {
+    margin-bottom: 0;
+  }
+
+  > .govuk-form-group {
+    flex: 0 0 auto;
+    max-width: 100%;
+  }
+
+  > .govuk-button {
+    flex: 0 0 auto;
+    width: auto;
+  }
 }
