@@ -310,36 +310,71 @@
     {{ end }}
 
     {{ if eq .View "audit" }}
-      <p class="govuk-body">Hier findest du die protokollierten Aktivitäten und ihre Ergebnisse. Die neuesten Einträge stehen zuerst.</p>
+      <form action="/admin/audit" method="get" class="govuk-!-margin-bottom-6">
+        <div class="govuk-form-group govuk-!-margin-bottom-3">
+          <label class="govuk-label" for="audit-search">Suchen</label>
+          <input class="govuk-input" id="audit-search" name="search" type="search" value="{{ .Query }}" />
+        </div>
+        <div class="app-user-filters">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="audit-event">Aktivität</label>
+            <select class="govuk-select" id="audit-event" name="event">
+              <option value="">Alle</option>
+              {{ range .AuditEventOptions }}
+                <option value="{{ .Value }}" {{ if .Selected }}selected{{ end }}>{{ .Label }}</option>
+              {{ end }}
+            </select>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="audit-outcome">Ergebnis</label>
+            <select class="govuk-select" id="audit-outcome" name="outcome">
+              <option value="">Alle</option>
+              {{ range .AuditOutcomeOptions }}
+                <option value="{{ .Value }}" {{ if .Selected }}selected{{ end }}>{{ .Label }}</option>
+              {{ end }}
+            </select>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Anwenden</button>
+        </div>
+        {{ if .AuditFiltersActive }}
+          <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-0"><a class="govuk-link" href="/admin/audit">Zurücksetzen</a></p>
+        {{ end }}
+      </form>
+      <h2 class="govuk-heading-m">{{ .Total }} {{ if eq .Total 1 }}Aktivität{{ else }}Aktivitäten{{ end }}</h2>
       {{ if .AuditEntries }}
-        <div class="app-audit-table">
-          <table class="govuk-table">
+          <table class="govuk-table app-admin-table app-exams-upload-table" role="table">
             <caption class="govuk-visually-hidden">Aktivitäten</caption>
-            <thead class="govuk-table__head">
-              <tr class="govuk-table__row">
-                <th class="govuk-table__header" scope="col">Zeitpunkt</th>
-                <th class="govuk-table__header" scope="col">Ereignis</th>
-                <th class="govuk-table__header" scope="col">Ergebnis</th>
-                <th class="govuk-table__header" scope="col">Ausgeführt von</th>
-                <th class="govuk-table__header" scope="col">Betroffenes Konto</th>
+            <thead class="govuk-table__head" role="rowgroup">
+              <tr class="govuk-table__row" role="row">
+                <th class="govuk-table__header" scope="col" role="columnheader">Zeitpunkt</th>
+                <th class="govuk-table__header" scope="col" role="columnheader">Aktivität</th>
+                <th class="govuk-table__header" scope="col" role="columnheader">Ergebnis</th>
+                <th class="govuk-table__header" scope="col" role="columnheader">Konto</th>
               </tr>
             </thead>
-            <tbody class="govuk-table__body">
+            <tbody class="govuk-table__body" role="rowgroup">
               {{ range .AuditEntries }}
-                <tr class="govuk-table__row">
-                  <td class="govuk-table__cell"><time datetime="{{ .OccurredAt }}">{{ .TimeLabel }}</time></td>
-                  <th class="govuk-table__header" scope="row">{{ .Event }}</th>
-                  <td class="govuk-table__cell">{{ .Outcome }}</td>
-                  <td class="govuk-table__cell">{{ template "audit-account" .Actor }}</td>
-                  <td class="govuk-table__cell">{{ template "audit-account" .User }}</td>
+                <tr class="govuk-table__row" role="row">
+                  <td class="govuk-table__cell" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Zeitpunkt</span><time datetime="{{ .OccurredAt }}">{{ .TimeLabel }}</time></td>
+                  <td class="govuk-table__cell" role="cell">
+                    <span class="app-exams-upload-label" aria-hidden="true">Aktivität</span>
+                    <span>{{ .EventLabel }}</span>
+                  </td>
+                  <td class="govuk-table__cell" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Ergebnis</span><span><strong class="govuk-tag govuk-tag--{{ .OutcomeColour }}">{{ .OutcomeLabel }}</strong></span></td>
+                  <td class="govuk-table__cell" role="cell">
+                    <span class="app-exams-upload-label" aria-hidden="true">Konto</span>
+                    <div>
+                      {{ template "audit-account" .Account }}
+                      {{ if .HasSeparateActor }}<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Durch: {{ template "audit-account" .Actor }}</p>{{ end }}
+                    </div>
+                  </td>
                 </tr>
               {{ end }}
             </tbody>
           </table>
-        </div>
         {{ template "list-pagination" .AuditPagination }}
       {{ else }}
-        <p class="govuk-body">Es wurden noch keine Aktivitäten protokolliert.</p>
+        <p class="govuk-body">{{ if .AuditFiltersActive }}Für diese Suche wurden keine Aktivitäten gefunden. Passe die Suche oder die Filter an.{{ else }}Es wurden noch keine Aktivitäten protokolliert.{{ end }}</p>
       {{ end }}
     {{ end }}
 

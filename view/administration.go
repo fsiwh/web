@@ -50,6 +50,8 @@ type AdminPage struct {
 	Roles                                                        []AdminRoleRow
 	Users                                                        []User
 	AuditEntries                                                 []AuditEntry
+	AuditEvent, AuditOutcome                                     string
+	AuditEventOptions, AuditOutcomeOptions                       []AdminOption
 	UserRoles                                                    []string
 	UserStatus                                                   string
 	User                                                         *User
