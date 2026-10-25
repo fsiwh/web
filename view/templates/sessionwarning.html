@@ -1,0 +1,16 @@
+{{ define "session-warning" }}
+  <dialog class="app-dialog app-session-warning" id="session-warning" aria-labelledby="session-warning-title" aria-describedby="session-warning-description" data-deadline="{{ .SessionDeadline }}" data-absolute="{{ .SessionAbsolute }}" data-now="{{ .SessionNow }}" data-csrf="{{ .CSRF }}">
+    <h2 class="govuk-heading-m" id="session-warning-title" tabindex="-1">Deine Sitzung läuft bald ab</h2>
+    <p class="govuk-body" id="session-warning-description">Ohne weitere Aktivität wirst du automatisch abgemeldet. Nicht gespeicherte Eingaben können dabei verloren gehen.</p>
+    <p class="govuk-body" id="session-countdown" aria-live="polite" aria-atomic="true"></p>
+    <p class="govuk-error-message" id="session-warning-error" role="alert" hidden>Die Sitzung konnte nicht verlängert werden. Prüfe deine Verbindung und versuche es erneut.</p>
+    <div class="govuk-button-group">
+      <button class="govuk-button" type="button" id="session-continue" data-module="govuk-button">Angemeldet bleiben</button>
+      <a class="govuk-button" href="/login" id="session-sign-in" hidden>Erneut anmelden</a>
+      <form action="/logout" method="post">
+        <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+        <button class="govuk-button govuk-button--secondary" type="submit" data-module="govuk-button">Abmelden</button>
+      </form>
+    </div>
+  </dialog>
+{{ end }}

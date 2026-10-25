@@ -3,11 +3,14 @@ package site
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"database/sql"
 	"encoding/hex"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fachschaftinformatik/web/internal/audit"
 	"github.com/fachschaftinformatik/web/model/users"
@@ -21,6 +24,7 @@ type session = users.Session
 // There is deliberately no pathname-based security classification.
 type routePolicy struct {
 	session, authenticated, admin, reviewer, csrf, private bool
+	passive                                                bool
 	bodyLimit                                              int64
 }
 
@@ -84,7 +88,7 @@ func takeFlash(w http.ResponseWriter) string {
 }
 
 func (c *Handler) setSessionCookie(w http.ResponseWriter, r *http.Request, s *session) {
-	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: s.ID, Path: "/", HttpOnly: true, Secure: c.secureCookies || r.TLS != nil, SameSite: http.SameSiteLaxMode, MaxAge: 8 * 60 * 60})
+	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: s.ID, Path: "/", HttpOnly: true, Secure: c.secureCookies || r.TLS != nil, SameSite: http.SameSiteLaxMode, MaxAge: max(1, int(time.Until(s.Expires).Seconds())), Expires: s.Expires})
 }
 
 func (c *Handler) withSession(policy routePolicy, next http.Handler) http.Handler {
@@ -188,6 +192,16 @@ func (c *Handler) withSession(policy routePolicy, next http.Handler) http.Handle
 				}
 				audit.Audit(ctx, "request.csrf", "rejected", userID)
 				c.pageError(response, "Lade die Seite neu und versuche es noch einmal.", http.StatusForbidden)
+				return
+			}
+		}
+		if s != nil && s.Authenticated && !policy.passive {
+			if err := c.identity.TouchSession(r.Context(), s); err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					http.Redirect(response, r, "/session/expired", http.StatusSeeOther)
+				} else {
+					c.serverError(response, err)
+				}
 				return
 			}
 		}

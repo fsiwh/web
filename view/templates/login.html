@@ -80,6 +80,14 @@
         </button>
       </div>
     </div>
+    <div class="govuk-form-group">
+      <div class="govuk-checkboxes govuk-checkboxes--small" data-module="govuk-checkboxes">
+        <div class="govuk-checkboxes__item">
+          <input class="govuk-checkboxes__input" id="remember" name="remember" type="checkbox" value="yes" {{ if .Login.Remember }}checked{{ end }} />
+          <label class="govuk-label govuk-checkboxes__label" for="remember">14 Tage angemeldet bleiben</label>
+        </div>
+      </div>
+    </div>
     <button class="govuk-button" type="submit" data-module="govuk-button">Anmelden</button>
   </form>
   <p class="govuk-body"><a class="govuk-link" href="/password/forgot">Passwort vergessen?</a></p>

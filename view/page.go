@@ -150,5 +150,6 @@ type Page struct {
 	UserID                                                          int64
 	Role                                                            string
 	CSRF                                                            string
+	SessionDeadline, SessionAbsolute, SessionNow                    int64
 	Admin                                                           *AdminPage
 }

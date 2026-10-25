@@ -31,6 +31,12 @@ func TestSubmissionMailSettingsAuthorizationAndPersistence(t *testing.T) {
 	if _, err := db.Exec(`UPDATE users SET role='editor' WHERE id=1`); err != nil {
 		t.Fatal(err)
 	}
+	session, err = users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"fsi-wh.de"}}).CreateSession(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.client.Jar.SetCookies(mustURL(t, b.server.URL), []*http.Cookie{{Name: sessionCookie, Value: session.ID, Path: "/"}})
+	form.Set("csrf", session.CSRF)
 	if status, body, _ := b.get("/exams/settings"); status != 200 || !strings.Contains(body, `name="submission_mail"`) {
 		t.Fatal("reviewer notification setting is missing", status)
 	}

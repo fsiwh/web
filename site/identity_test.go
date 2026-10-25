@@ -151,9 +151,18 @@ func TestPersistentLoginAuthorizationAndLogout(t *testing.T) {
 	if _, err := db.Exec(`UPDATE users SET role='admin' WHERE id=42`); err != nil {
 		t.Fatal(err)
 	}
+	if status, _, _ := b.get("/admin/users"); status != 303 {
+		t.Fatal("promotion did not require a fresh login")
+	}
+	_, body, _ = b.get("/login")
+	if status, _, _ := b.post("/login", url.Values{"email": {"person@fsv-wh.de"}, "password": {"existing password"}, "csrf": {csrfFrom(t, body)}}); status != 303 {
+		t.Fatal("login after promotion failed")
+	}
 	if status, body, _ := b.get("/admin/users"); status != 200 || !strings.Contains(body, "person@fsv-wh.de") {
 		t.Fatal("live directory or updated role not used")
 	}
+	_, body, _ = b.get("/admin")
+	rotated = csrfFrom(t, body)
 	// Build a fresh handler and service, keeping only the database and browser cookie.
 	handler, err := New(persistentServices(t, db, nil), false)
 	if err != nil {

@@ -166,6 +166,7 @@ func (c *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		data.Login.Email = strings.TrimSpace(r.PostForm.Get("email"))
+		data.Login.Remember = r.PostForm.Get("remember") == "yes"
 
 		data.Login.EmailError = c.identity.EmailError(data.Login.Email)
 		if r.PostForm.Get("password") == "" {
@@ -191,7 +192,7 @@ func (c *Handler) Login(w http.ResponseWriter, r *http.Request) {
 					c.serverError(w, err)
 					return
 				}
-				s, err := c.identity.CreateSession(r.Context(), userID)
+				s, err := c.identity.CreateLoginSession(r.Context(), userID, data.Login.Remember)
 				if err != nil {
 					c.serverError(w, err)
 					return

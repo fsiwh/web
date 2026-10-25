@@ -28,9 +28,12 @@ func (c *Handler) routes() http.Handler {
 	registerMedia(c, register)
 	registerExams(c, register)
 	registerAccounts(c, register)
+	register("GET /session", routePolicy{passive: true}, c.SessionStatus)
+	register("POST /session/extend", routePolicy{passive: true, csrf: true, bodyLimit: 64 << 10}, c.ExtendSession)
+	register("GET /session/expired", routePolicy{passive: true}, c.SessionExpired)
 	registerAdmin(c, register)
 	register("GET "+urls.DocumentPattern, routePolicy{}, c.Document)
-	register("GET "+urls.AssetsPath, routePolicy{}, http.StripPrefix(urls.AssetsPath, http.FileServerFS(view.Assets())).ServeHTTP)
+	register("GET "+urls.AssetsPath, routePolicy{passive: true}, http.StripPrefix(urls.AssetsPath, http.FileServerFS(view.Assets())).ServeHTTP)
 	// Unknown routes do not run authentication or CSRF middleware.
 	router.HandleFunc("/", c.notFound)
 	return c.canonicalize(router)
@@ -45,7 +48,7 @@ func forms(register routeRegister, path string, policy routePolicy, handler http
 
 func registerPages(c *Handler, register routeRegister) {
 	public := routePolicy{}
-	register("GET "+urls.HealthPath, public, func(w http.ResponseWriter, r *http.Request) {
+	register("GET "+urls.HealthPath, routePolicy{passive: true}, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("ok\n"))
 	})
@@ -60,7 +63,7 @@ func registerPages(c *Handler, register routeRegister) {
 			c.serverError(w, err)
 			return
 		}
-		c.render(w, "home", false, view.Page{Title: "Startseite", Active: "home", Home: home, Media: view.MediaPage{Albums: mapRecords(albums, albumView)}})
+		c.render(w, "landing", false, view.Page{Title: "Startseite", Active: "home", Home: home, Media: view.MediaPage{Albums: mapRecords(albums, albumView)}})
 	})
 	register("GET "+urls.TeamPath, public, c.Team)
 	register("GET "+urls.SitemapPath, public, c.Sitemap)

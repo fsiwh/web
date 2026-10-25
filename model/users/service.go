@@ -49,6 +49,8 @@ type Session struct {
 	Role          string
 	Authenticated bool
 	Expires       time.Time
+	IdleExpires   time.Time
+	Remembered    bool
 }
 
 func (s Session) CanAdmin() bool { return s.Authenticated && s.Role == "admin" }
@@ -71,16 +73,34 @@ func digest(value string) string {
 }
 
 func (s *Service) CreateSession(ctx context.Context, userID int64) (*Session, error) {
+	return s.CreateLoginSession(ctx, userID, false)
+}
+
+func (s *Service) CreateLoginSession(ctx context.Context, userID int64, remember bool) (*Session, error) {
 	value, err := token()
 	if err != nil {
 		return nil, err
 	}
 	expires := time.Now().UTC().Add(8 * time.Hour)
 	var user any
+	var idle any
+	var role string
 	if userID != 0 {
 		user = userID
+		if err := s.db.QueryRowContext(ctx, "SELECT role FROM users WHERE id=? AND deleted_at IS NULL", userID).Scan(&role); err != nil {
+			return nil, err
+		}
+		// A persistent ordinary login must never retain administrative authority.
+		remember = remember && role == "user"
+		if remember {
+			expires = time.Now().UTC().Add(14 * 24 * time.Hour)
+		} else {
+			idle = datetime.FormatUTC(time.Now().UTC().Add(SessionIdleTimeout))
+		}
+	} else {
+		remember = false
 	}
-	if _, err := s.db.ExecContext(ctx, `INSERT INTO web_sessions (id,user_id,expires_at) VALUES (?,?,?)`, digest(value), user, datetime.FormatUTC(expires)); err != nil {
+	if _, err := s.db.ExecContext(ctx, `INSERT INTO web_sessions (id,user_id,expires_at,idle_expires_at,remembered,login_role) VALUES (?,?,?,?,?,?)`, digest(value), user, datetime.FormatUTC(expires), idle, remember, role); err != nil {
 		return nil, err
 	}
 	result, err := s.Session(ctx, value)
@@ -95,9 +115,11 @@ func (s *Service) Session(ctx context.Context, value string) (*Session, error) {
 		return nil, nil
 	}
 	var userID sql.NullInt64
-	var role, expiry string
+	var role, expiry, loginRole string
+	var idle sql.NullString
+	var remembered bool
 	var active, verified int
-	err := s.db.QueryRowContext(ctx, `SELECT ws.user_id, ws.expires_at, COALESCE(u.role,''), COALESCE(u.active,0), COALESCE(u.verified,0) FROM web_sessions ws LEFT JOIN users u ON u.id=ws.user_id AND u.deleted_at IS NULL WHERE ws.id=?`, digest(value)).Scan(&userID, &expiry, &role, &active, &verified)
+	err := s.db.QueryRowContext(ctx, `SELECT ws.user_id, ws.expires_at, COALESCE(u.role,''), COALESCE(u.active,0), COALESCE(u.verified,0),ws.idle_expires_at,ws.remembered,ws.login_role FROM web_sessions ws LEFT JOIN users u ON u.id=ws.user_id AND u.deleted_at IS NULL WHERE ws.id=?`, digest(value)).Scan(&userID, &expiry, &role, &active, &verified, &idle, &remembered, &loginRole)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -105,7 +127,13 @@ func (s *Service) Session(ctx context.Context, value string) (*Session, error) {
 		return nil, err
 	}
 	expires, err := time.Parse(time.RFC3339, expiry)
-	if err != nil || !time.Now().Before(expires) || userID.Valid && (active != 1 || verified != 1 || role == "") {
+	var idleExpiry time.Time
+	if idle.Valid {
+		idleExpiry, _ = time.Parse(time.RFC3339, idle.String)
+	}
+	idleExpired := idle.Valid && (idleExpiry.IsZero() || !time.Now().Before(idleExpiry))
+	roleChanged := userID.Valid && ((role == "admin" && loginRole != "admin") || (role == "editor" && loginRole != "admin" && loginRole != "editor"))
+	if err != nil || !time.Now().Before(expires) || idleExpired || roleChanged || userID.Valid && (active != 1 || verified != 1 || role == "") {
 		if err := s.DeleteSession(ctx, value); err != nil {
 			return nil, err
 		}
@@ -114,11 +142,13 @@ func (s *Service) Session(ctx context.Context, value string) (*Session, error) {
 			reason = "invalid_expiry"
 		} else if !time.Now().Before(expires) {
 			event, reason = "session.expired", "expired"
+		} else if idleExpired {
+			event, reason = "session.expired", "inactive"
 		}
 		audit.Audit(ctx, event, reason, userID.Int64)
 		return nil, nil
 	}
-	return &Session{ID: value, CSRF: digest("csrf:" + value), UserID: userID.Int64, Role: role, Authenticated: userID.Valid, Expires: expires}, nil
+	return &Session{ID: value, CSRF: digest("csrf:" + value), UserID: userID.Int64, Role: role, Authenticated: userID.Valid, Expires: expires, IdleExpires: idleExpiry, Remembered: remembered}, nil
 }
 
 func (s *Service) DeleteSession(ctx context.Context, value string) error {
@@ -524,7 +554,7 @@ func (s *Service) PurgeExpired(ctx context.Context) error {
 	}
 	defer tx.Rollback()
 	now := datetime.FormatUTC(time.Now())
-	rows, err := tx.QueryContext(ctx, `DELETE FROM web_sessions WHERE expires_at<=? RETURNING user_id`, now)
+	rows, err := tx.QueryContext(ctx, `DELETE FROM web_sessions WHERE expires_at<=? OR idle_expires_at<=? RETURNING user_id`, now, now)
 	if err != nil {
 		return err
 	}
