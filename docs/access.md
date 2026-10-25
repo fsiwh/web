@@ -28,6 +28,7 @@ access is not scoped to an organisation.
 | Manage photo visibility on the homepage | No | Yes | Yes |
 | Open Verwaltung | No | Yes | Yes |
 | List modules in Verwaltung | No | No | Yes |
+| List Studiengänge in Verwaltung | No | No | Yes |
 | Manage Stammdaten | No | No | Yes |
 | Manage members, invitations and organisational functions | No | No | Yes |
 | Manage meeting invitations and minutes | No | No | Yes |
@@ -37,7 +38,7 @@ access is not scoped to an organisation.
 
 Public pages are also available without signing in. Altklausuren require sign-in.
 Private profiles and unpublished photos are not made public by a higher role.
-The module-management page currently provides the list only.
+The module and study-program management pages currently provide lists only.
 
 ## How access is enforced
 
