@@ -33,6 +33,9 @@ func (c *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch section {
+	case "modules":
+		c.AdminModules(w, r, a)
+		return
 	case "audit":
 		c.AuditEvents(w, r, a)
 		return

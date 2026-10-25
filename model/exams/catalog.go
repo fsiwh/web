@@ -289,24 +289,8 @@ func (s *Service) Catalog(ctx context.Context) (Catalog, error) {
 		result.programVersions[program] = appendUnique(result.programVersions[program], v.Name)
 		qualificationVersions[v.ProgramID] = appendUnique(qualificationVersions[v.ProgramID], v.Name)
 	}
-	modules, err := q.ListArchiveModules(ctx)
-	if err != nil {
+	if err := result.loadModules(ctx, tx, qualificationVersions); err != nil {
 		return Catalog{}, err
-	}
-	for _, m := range modules {
-		id, err := lookupID(ctx, tx, "modules", m.ID)
-		if err != nil {
-			return Catalog{}, err
-		}
-		var programID int64
-		if err := tx.QueryRowContext(ctx, "SELECT program_id FROM modules WHERE id=?", m.ID).Scan(&programID); err != nil {
-			return Catalog{}, err
-		}
-		module := Module{ID: id, ProgramID: result.qualifications[programID].program, Title: m.Name, Program: m.ProgramName, StudyProgram: m.StudyProgram, Degree: m.Degree, versions: qualificationVersions[programID]}
-		result.modules = append(result.modules, module)
-		_, degree := module.Qualification()
-		result.programs = appendUnique(result.programs, module.ProgramID)
-		result.degrees = appendUnique(result.degrees, DegreeValue(degree))
 	}
 	entries, err := q.ListArchiveCatalog(ctx)
 	if err != nil {
