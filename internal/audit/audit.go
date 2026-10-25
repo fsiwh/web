@@ -12,6 +12,12 @@ type loggerKey struct{}
 type recorderKey struct{}
 type requestKey struct{}
 
+// Content records only the public/editorial resource, never its author's
+// account fields. The full audit retains the request actor for administrators.
+func Content(ctx context.Context, event, label, path string) {
+	Audit(ctx, event, "success", 0, slog.String("content_label", label), slog.String("content_url", path))
+}
+
 type requestInfo struct {
 	id, method, route string
 	actorUserID       int64

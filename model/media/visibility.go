@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/fachschaftinformatik/web/internal/audit"
 	"github.com/fachschaftinformatik/web/internal/content"
 )
 
@@ -94,5 +95,9 @@ func (s *Service) SetHomepageVisibility(ctx context.Context, user int64, value s
 	if n == 0 {
 		return ErrNotFound
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	audit.Content(ctx, "content.photo_visibility", "Fotos", "/media/manage")
+	return nil
 }

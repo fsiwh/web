@@ -9,7 +9,11 @@ import (
 
 func (c *Handler) AuditEvents(w http.ResponseWriter, r *http.Request, a *view.AdminPage) {
 	a.View, a.Page = "audit", requestedPage(r)
-	page, err := c.audit.List(r.Context(), audit.Filter{Query: r.URL.Query().Get("search"), Event: r.URL.Query().Get("event"), Outcome: r.URL.Query().Get("outcome")}, a.Page)
+	list := c.audit.List
+	if !w.(*sessionResponse).session.CanAdmin() {
+		list = c.audit.EditorialList
+	}
+	page, err := list(r.Context(), audit.Filter{Query: r.URL.Query().Get("search"), Event: r.URL.Query().Get("event"), Outcome: r.URL.Query().Get("outcome")}, a.Page)
 	if err != nil {
 		c.serverError(w, err)
 		return
@@ -28,8 +32,9 @@ func (c *Handler) AuditEvents(w http.ResponseWriter, r *http.Request, a *view.Ad
 	for _, entry := range page.Entries {
 		a.AuditEntries = append(a.AuditEntries, view.AuditEntry{
 			OccurredAt: entry.OccurredAt, Event: entry.Event, Outcome: entry.Outcome,
-			Actor: view.AuditAccount{ID: entry.Actor.ID, Name: entry.Actor.Name, PublicID: entry.Actor.PublicID},
-			User:  view.AuditAccount{ID: entry.User.ID, Name: entry.User.Name, PublicID: entry.User.PublicID},
+			Actor:   view.AuditAccount{ID: entry.Actor.ID, Name: entry.Actor.Name, PublicID: entry.Actor.PublicID},
+			User:    view.AuditAccount{ID: entry.User.ID, Name: entry.User.Name, PublicID: entry.User.PublicID},
+			Content: entry.Content, ContentURL: entry.ContentURL,
 		})
 	}
 	c.adminRender(w, a.SectionTitle, a, http.StatusOK)

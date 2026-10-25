@@ -152,34 +152,44 @@ func registerAdmin(c *Handler, register routeRegister) {
 		forms(register, path, policy, handler)
 	}
 	register("GET "+urls.AdminPath, reviewer, c.Admin)
-	register("GET "+urls.AdminAuditPath, admin, section("audit", c.Admin))
-	register("GET "+urls.AdminModulesPath, admin, section("modules", c.Admin))
-	register("GET "+urls.AdminProgramsPath, admin, section("programs", c.Admin))
-	register("GET "+urls.AdminRegulationsPath, admin, section("regulations", c.Admin))
-	register("GET "+urls.AdminRegulationPattern, admin, section("regulations", c.Admin))
-	register("GET /admin/regulation-documents/{id}", admin, c.AdminRegulationDocument)
-	for _, item := range []struct{ name, path string }{{"settings", urls.AdminSettingsPath}, {"members", urls.AdminMembersPath}, {"roles", urls.AdminRolesPath}, {"meetings", urls.AdminMeetingsPath}, {"users", urls.AdminUsersPath}} {
-		register("GET "+item.path, admin, section(item.name, c.Admin))
+	register("GET "+urls.AdminAuditPath, reviewer, section("audit", c.Admin))
+	register("GET "+urls.AdminModulesPath, reviewer, section("modules", c.Admin))
+	register("GET "+urls.AdminProgramsPath, reviewer, section("programs", c.Admin))
+	register("GET "+urls.AdminRegulationsPath, reviewer, section("regulations", c.Admin))
+	register("GET "+urls.AdminRegulationPattern, reviewer, section("regulations", c.Admin))
+	register("GET /admin/regulation-documents/{id}", reviewer, c.AdminRegulationDocument)
+	for _, item := range []struct{ name, path string }{{"settings", urls.AdminSettingsPath}, {"members", urls.AdminMembersPath}, {"roles", urls.AdminRolesPath}, {"meetings", urls.AdminMeetingsPath}} {
+		register("GET "+item.path, reviewer, section(item.name, c.Admin))
 	}
+	register("GET "+urls.AdminUsersPath, admin, section("users", c.Admin))
 	for _, name := range []string{"identity", "contact", "legal", "links"} {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			r.SetPathValue("id", name)
 			section("settings", c.Admin)(w, r)
 		}
-		form(urls.AdminSettingsPath+"/"+name, admin, handler)
+		register("GET "+urls.AdminSettingsPath+"/"+name, reviewer, handler)
+		policy := admin
+		if name == "contact" || name == "links" {
+			policy = reviewer
+		}
+		register("POST "+urls.AdminSettingsPath+"/"+name, policy, handler)
 	}
 	for _, item := range []struct{ name, create, edit string }{{"members", urls.CreateAdminMemberPath, urls.EditAdminMemberPattern}, {"roles", urls.CreateAdminRolePath, urls.EditAdminRolePattern}, {"meetings", urls.CreateAdminMeetingPath, urls.EditAdminMeetingPattern}} {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			r.SetPathValue("id", "create")
 			section(item.name, c.Admin)(w, r)
 		}
-		form(item.create, admin, handler)
-		form(item.edit, admin, section(item.name, c.Admin))
+		createPolicy := reviewer
+		if item.name == "members" {
+			createPolicy = admin
+		}
+		form(item.create, createPolicy, handler)
+		form(item.edit, reviewer, section(item.name, c.Admin))
 	}
-	register("GET "+urls.AdminMemberPattern, admin, section("members", c.Admin))
+	register("GET "+urls.AdminMemberPattern, reviewer, section("members", c.Admin))
 	register("POST "+urls.AdminMemberPattern+"/invite", admin, c.ResendInvitation)
-	register("GET "+urls.AdminMeetingPattern, admin, section("meetings", c.Admin))
-	form(urls.AdminMeetingPattern+"/check", admin, c.ReviewPublication)
+	register("GET "+urls.AdminMeetingPattern, reviewer, section("meetings", c.Admin))
+	form(urls.AdminMeetingPattern+"/check", reviewer, c.ReviewPublication)
 	register("GET "+urls.AdminSubmissionsPath, reviewer, section("submissions", c.Admin))
 	register("GET "+urls.AdminSubmissionPattern, reviewer, c.ReviewExamsSubmission)
 	form(urls.ReviewSubmissionPattern, reviewer, c.ReviewExamsSubmission)

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/fachschaftinformatik/web/internal/audit"
 	"github.com/fachschaftinformatik/web/internal/urls"
 	"github.com/fachschaftinformatik/web/model/members"
 	"github.com/fachschaftinformatik/web/view"
@@ -24,7 +25,7 @@ func (c *Handler) EditMember(w http.ResponseWriter, r *http.Request, a *view.Adm
 		return
 	}
 	title := "Mitglied bearbeiten"
-	if id == "create" || p.UserID == 0 {
+	if w.(*sessionResponse).session.CanAdmin() && (id == "create" || p.UserID == 0) {
 		title = "Mitglied einladen"
 		a.Inviting = true
 	}
@@ -48,9 +49,15 @@ func (c *Handler) EditMember(w http.ResponseWriter, r *http.Request, a *view.Adm
 			}
 		} else {
 
-			errors = c.members.SaveMember(p)
+			var err error
+			errors, err = c.members.SavePublicName(r.Context(), w.(*sessionResponse).session.UserID, p.ID, p.Name)
+			if err != nil {
+				c.serverError(w, err)
+				return
+			}
 		}
 		if len(errors) == 0 {
+			audit.Content(r.Context(), "content.member_saved", p.Name, urls.AdminMembersPath)
 			flash(w, "Die Änderungen wurden gespeichert.")
 			http.Redirect(w, r, urls.AdminMembersPath, http.StatusSeeOther)
 			return
@@ -61,7 +68,9 @@ func (c *Handler) EditMember(w http.ResponseWriter, r *http.Request, a *view.Adm
 		a.Action = urls.EditAdminMember(id)
 	}
 	if id != "create" {
-		a.Member = ptr(memberView(p))
+		if w.(*sessionResponse).session.CanAdmin() {
+			a.Member = ptr(memberView(p))
+		}
 	}
 	a.Fields = []view.AdminField{view.Field("name", "Name", p.Name, "text")}
 	if a.Inviting {
@@ -69,7 +78,7 @@ func (c *Handler) EditMember(w http.ResponseWriter, r *http.Request, a *view.Adm
 		a.Fields[1].Hint = "Besteht bereits ein Benutzerkonto, wird es mit dem Mitglied verknüpft. Andernfalls wird ein Konto angelegt und eine Einladung gesendet."
 	} else {
 
-		a.Fields[0].Hint = "Der Name wird auch im verknüpften Benutzerkonto geändert."
+		a.Fields[0].Hint = "Der öffentliche Name auf der Teamseite."
 	}
 
 	view.AttachErrors(a.Fields, errors)
@@ -123,6 +132,7 @@ func (c *Handler) EditRole(w http.ResponseWriter, r *http.Request, a *view.Admin
 		}
 		errors = c.members.SaveRole(role)
 		if len(errors) == 0 {
+			audit.Content(r.Context(), "content.function_saved", role.Title, urls.AdminRolesPath)
 			flash(w, "Die Änderungen wurden gespeichert.")
 			http.Redirect(w, r, urls.AdminRolesPath, http.StatusSeeOther)
 			return

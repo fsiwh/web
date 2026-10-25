@@ -40,7 +40,6 @@
         Sitzungsdokumente veröffentlichen und Einreichungen prüfen.
       </p>
       <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible" />
-      {{ if not .ReviewerOnly }}
         <h2 class="govuk-heading-l">Organisation</h2>
         <div class="app-community-cards">
           <div class="app-community-card">
@@ -69,7 +68,7 @@
             />
             <h3 class="govuk-heading-m">Mitglieder</h3>
             <p class="govuk-body">
-              Lade Mitglieder ein, bearbeite ihre Daten und sieh, welche Funktionen sie übernehmen.
+              Bearbeite öffentliche Teamprofile und sieh, welche Funktionen sie übernehmen.
             </p>
             <p class="govuk-body">
               <a class="govuk-link" href="/admin/members">Zu den Mitgliedern</a>
@@ -111,7 +110,6 @@
             </p>
           </div>
         </div>
-      {{ end }}
       <h2 class="govuk-heading-l govuk-!-margin-top-9">Studierende</h2>
       <div class="app-community-cards">
         <div class="app-community-card">
@@ -131,7 +129,6 @@
             <a class="govuk-link" href="/admin/submissions">Zu den Einreichungen</a>
           </p>
         </div>
-        {{ if not .ReviewerOnly }}
           <div class="app-community-card">
             <img class="app-community-card__image" src="/assets/community/share-your-examples-and-research.svg" alt="" width="320" height="180" loading="lazy" />
             <h3 class="govuk-heading-m">Module</h3>
@@ -150,7 +147,7 @@
             <p class="govuk-body">Finde Prüfungsordnungen, Modulhandbücher und die zugehörigen Änderungen.</p>
             <p class="govuk-body"><a class="govuk-link" href="/admin/regulations">Zu den Prüfungsordnungen</a></p>
           </div>
-          <div class="app-community-card">
+          {{ if not .ReviewerOnly }}<div class="app-community-card">
             <img
               class="app-community-card__image"
               src="/assets/community/discuss-and-give-feedback.svg"
@@ -486,7 +483,7 @@
                 <th class="govuk-table__header" scope="col" role="columnheader">Zeitpunkt</th>
                 <th class="govuk-table__header" scope="col" role="columnheader">Aktivität</th>
                 <th class="govuk-table__header" scope="col" role="columnheader">Ergebnis</th>
-                <th class="govuk-table__header" scope="col" role="columnheader">Konto</th>
+                <th class="govuk-table__header" scope="col" role="columnheader">{{ if .ReviewerOnly }}Inhalt{{ else }}Konto{{ end }}</th>
               </tr>
             </thead>
             <tbody class="govuk-table__body" role="rowgroup">
@@ -499,11 +496,16 @@
                   </td>
                   <td class="govuk-table__cell" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Ergebnis</span><span><strong class="govuk-tag govuk-tag--{{ .OutcomeColour }}">{{ .OutcomeLabel }}</strong></span></td>
                   <td class="govuk-table__cell" role="cell">
+                    {{ if $.Admin.ReviewerOnly }}
+                    <span class="app-exams-upload-label" aria-hidden="true">Inhalt</span>
+                    <span>{{ if .ContentURL }}<a class="govuk-link" href="{{ .ContentURL }}">{{ .Content }}</a>{{ else }}{{ .Content }}{{ end }}</span>
+                    {{ else }}
                     <span class="app-exams-upload-label" aria-hidden="true">Konto</span>
                     <div>
                       {{ template "audit-account" .Account }}
                       {{ if .HasSeparateActor }}<p class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0">Durch: {{ template "audit-account" .Actor }}</p>{{ end }}
                     </div>
+                    {{ end }}
                   </td>
                 </tr>
               {{ end }}
@@ -515,6 +517,11 @@
       {{ end }}
     {{ end }}
 
+    {{ if eq .View "settings-readonly" }}
+      <dl class="govuk-summary-list">
+        {{ range .Fields }}<div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">{{ .Label }}</dt><dd class="govuk-summary-list__value">{{ if eq .Kind "links" }}<ul class="govuk-list">{{ range .Links }}<li><a class="govuk-link" href="{{ .URL }}">{{ .Title }}</a></li>{{ end }}</ul>{{ else }}{{ .Value }}{{ end }}</dd></div>{{ end }}
+      </dl>
+    {{ end }}
     {{ if eq .View "settings" }}
       <p class="govuk-body">
         Hier verwaltest du die allgemeinen Angaben zur Fachschaft – von Kontaktdaten und
@@ -638,11 +645,13 @@
     {{ if eq .View "reset" }}{{ template "password-reset-form" $ }}{{ end }}
 
     {{ if eq .View "members" }}
+      {{ if not .ReviewerOnly }}
       <div class="govuk-button-group">
         <a class="govuk-button" data-module="govuk-button" href="/admin/members/create"
           >Mitglied hinzufügen</a
         >
       </div>
+      {{ end }}
       <section aria-labelledby="members-heading">
         <h2 class="govuk-heading-m" id="members-heading">Mitglieder</h2>
         <table class="govuk-table app-admin-table app-exams-upload-table" role="table">
@@ -653,7 +662,7 @@
             <tr class="govuk-table__row" role="row">
               <th class="govuk-table__header" scope="col" role="columnheader">Name</th>
               <th class="govuk-table__header" scope="col" role="columnheader">Funktionen</th>
-              <th class="govuk-table__header" scope="col" role="columnheader">Status</th>
+              {{ if not .ReviewerOnly }}<th class="govuk-table__header" scope="col" role="columnheader">Status</th>{{ end }}
             </tr>
           </thead>
           <tbody class="govuk-table__body" role="rowgroup">
@@ -682,7 +691,7 @@
                     {{ end }}
                   </div>
                 </td>
-                <td class="govuk-table__cell" role="cell">
+                {{ if not $.Admin.ReviewerOnly }}<td class="govuk-table__cell" role="cell">
                   <span class="app-exams-upload-label" aria-hidden="true">Status</span
                   ><strong
                     class="govuk-tag {{ if not .UserID }}
@@ -694,7 +703,7 @@
                     {{ end }}"
                     >{{ .Status }}</strong
                   >
-                </td>
+                </td>{{ end }}
               </tr>
             {{ end }}
           </tbody>

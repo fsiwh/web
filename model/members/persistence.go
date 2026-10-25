@@ -91,7 +91,7 @@ func (s *Store) refresh(ctx context.Context) error {
 		return err
 	}
 	defer tx.Rollback()
-	rows, err := tx.QueryContext(ctx, `SELECT p.id,COALESCE(u.name,p.name),p.email,COALESCE(p.user_id,0),COALESCE(u.email,''),COALESCE(u.verified=1 AND u.deleted_at IS NULL,0),COALESCE(up.public_id,'') FROM people p LEFT JOIN users u ON u.id=p.user_id LEFT JOIN public_ids up ON up.namespace='users' AND up.record_id=CAST(u.id AS TEXT) AND up.retired=0 AND u.deleted_at IS NULL ORDER BY p.position,p.id`)
+	rows, err := tx.QueryContext(ctx, `SELECT p.id,COALESCE(NULLIF(p.public_name,''),u.name,p.name),p.email,COALESCE(p.user_id,0),COALESCE(u.email,''),COALESCE(u.verified=1 AND u.deleted_at IS NULL,0),COALESCE(up.public_id,'') FROM people p LEFT JOIN users u ON u.id=p.user_id LEFT JOIN public_ids up ON up.namespace='users' AND up.record_id=CAST(u.id AS TEXT) AND up.retired=0 AND u.deleted_at IS NULL ORDER BY p.position,p.id`)
 	if err != nil {
 		return err
 	}

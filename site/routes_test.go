@@ -67,9 +67,14 @@ func TestConcreteRoutePolicies(t *testing.T) {
 	if _, err := db.Exec("UPDATE users SET role='editor' WHERE id=900"); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/admin/settings", "/admin/members", "/admin/roles", "/admin/meetings", "/admin/users"} {
+	for _, path := range []string{"/admin/users", "/admin/members/create"} {
 		if code, _, _ := b.get(path); code != 403 {
 			t.Fatalf("reviewer accessed %s: %d", path, code)
+		}
+	}
+	for _, path := range []string{"/admin/settings", "/admin/settings/identity", "/admin/settings/legal", "/admin/members", "/admin/roles", "/admin/roles/create", "/admin/meetings", "/admin/meetings/create", "/admin/modules", "/admin/programs", "/admin/regulations", "/admin/audit"} {
+		if code, _, _ := b.get(path); code != 200 {
+			t.Fatalf("editor content access denied %s: %d", path, code)
 		}
 	}
 	if code, _, _ := b.get("/admin/submissions"); code != 200 {

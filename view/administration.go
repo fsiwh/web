@@ -46,6 +46,7 @@ type AdminPage struct {
 	Member                                                       *Member
 	Inviting                                                     bool
 	ReviewerOnly                                                 bool
+	ReadOnly                                                     bool
 	Submissions                                                  []Submission
 	Section, SectionTitle, View, Action, Query, Message, Success string
 	Fields                                                       []AdminField
@@ -81,7 +82,7 @@ type AdminGroup struct {
 func (a AdminPage) Groups() []AdminGroup {
 	var groups []AdminGroup
 	for _, link := range AdminLinks {
-		if a.ReviewerOnly && link.ID != "submissions" {
+		if a.ReviewerOnly && link.ID == "users" {
 			continue
 		}
 		if len(groups) == 0 || groups[len(groups)-1].Title != link.Group {

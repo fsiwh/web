@@ -55,11 +55,15 @@ func TestAuditListRequiresAdministrator(t *testing.T) {
 		if _, err := db.Exec("UPDATE users SET role=? WHERE id=900", role); err != nil {
 			t.Fatal(err)
 		}
-		if status, body, _ := b.get("/admin/audit"); status != 403 || strings.Contains(body, "account.login") {
+		wantStatus := 403
+		if role == "editor" {
+			wantStatus = 200
+		}
+		if status, body, _ := b.get("/admin/audit"); status != wantStatus || strings.Contains(body, "account.login") {
 			t.Fatalf("%s can read audit history: %d", role, status)
 		}
 		_, body, _ = b.get("/admin")
-		if strings.Contains(body, `href="/admin/audit"`) {
+		if strings.Contains(body, `href="/admin/audit"`) != (role == "editor") {
 			t.Fatalf("%s sees audit navigation", role)
 		}
 	}

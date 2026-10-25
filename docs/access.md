@@ -22,25 +22,54 @@ access is not scoped to an organisation.
 | Change own submission-notification preference | No | Own | Own |
 | Create discussions, comment and vote | Yes | Yes | Yes |
 | Edit discussions | Own | Yes | Yes |
-| Edit comments | Own | Own | Yes |
+| Edit comments | Own | Yes | Yes |
 | Create and edit news | No | Yes | Yes |
 | Create and edit events and their cover images | No | Yes | Yes |
 | Manage photo visibility on the homepage | No | Yes | Yes |
 | Open Verwaltung | No | Yes | Yes |
-| List modules in Verwaltung | No | No | Yes |
-| List Studiengänge in Verwaltung | No | No | Yes |
-| List Prüfungsordnungen and inspect document references | No | No | Yes |
-| Manage Stammdaten | No | No | Yes |
-| Manage members, invitations and organisational functions | No | No | Yes |
-| Manage meeting invitations and minutes | No | No | Yes |
+| List modules in Verwaltung | No | Yes | Yes |
+| List Studiengänge in Verwaltung | No | Yes | Yes |
+| List Prüfungsordnungen and inspect/download document references | No | Yes | Yes |
+| Edit contact details and public links | No | Yes | Yes |
+| Read organisation identity and legal settings | No | Yes | Yes |
+| Edit organisation identity and legal settings | No | No | Yes |
+| Edit existing public team names and organisational functions/assignments | No | Yes | Yes |
+| Invite/link members and resend invitations | No | No | Yes |
+| Create, edit and publish meeting invitations and minutes | No | Own | Own |
 | List and inspect Benutzerkonten | No | No | Yes |
 | Send password-reset or account-confirmation emails | No | No | Yes |
-| View and search Aktivitäten | No | No | Yes |
+| View and search editorial Aktivitäten | No | Yes | Yes (full history) |
+| View and search account/security Aktivitäten | No | No | Yes |
 
 Public pages are also available without signing in. Altklausuren require sign-in.
 Private profiles and unpublished photos are not made public by a higher role.
 The module and study-program management pages currently provide lists only.
 Prüfungsordnungen also have read-only document detail pages.
+
+## Editor / administrator boundary
+
+Editors manage content; administrators additionally manage accounts, invitations
+and protected organisation settings. Organisational functions are public team
+assignments, not login access roles.
+
+- Editing a team name stores a public display-name override. Login identity,
+  account email, account linkage and access role are not changed. Editors do not
+  receive account details or invitation controls in team management.
+- Editors can read identity/legal settings but can save only contact details and
+  public links. The organisation model rejects protected-field changes as well
+  as the route policy rejecting writes to protected forms.
+- Both roles retain meeting-document ownership restrictions: another person's
+  private draft cannot be edited or published. Published files remain immutable.
+- Editors' Aktivitäten show only an explicit allowlist of editorial events.
+  Account/security events, private submission drafts and unknown future event
+  types are excluded before pagination, counting, filter options and search.
+  The query does not join accounts; names, emails, account identifiers and links
+  are not exposed or searchable. Public content titles and public team names may
+  still identify people; this is a content-focused view, not an anonymity claim.
+- Successful news/discussion saves, comment edits, event saves, photo-visibility
+  changes, meeting publications, public team/function edits and editorial settings
+  saves are recorded. Submitted exam work is included only while accessible to
+  reviewers. Administrators retain the full audit history and actor attribution.
 
 ## How access is enforced
 
@@ -64,3 +93,6 @@ Prüfungsordnungen also have read-only document detail pages.
 - [News publishing](../model/posts/draft.go)
 - [Event publishing](../model/events/cover.go)
 - [Photo visibility](../model/media/visibility.go)
+- [Public team names](../model/members/public.go)
+- [Organisation field permissions](../model/organization/organization.go)
+- [Editorial activity projection](../internal/audit/editorial.go)

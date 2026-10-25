@@ -17,6 +17,7 @@ type Account struct {
 type Entry struct {
 	OccurredAt, Event, Outcome string
 	Actor, User                Account
+	Content, ContentURL        string
 }
 
 type Page struct {
