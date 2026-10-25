@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -15,6 +16,7 @@ type requestKey struct{}
 // Content records only the public/editorial resource, never its author's
 // account fields. The full audit retains the request actor for administrators.
 func Content(ctx context.Context, event, label, path string) {
+	label = strings.ReplaceAll(strings.ReplaceAll(label, "\n", ""), "\r", "")
 	Audit(ctx, event, "success", 0, slog.String("content_label", label), slog.String("content_url", path))
 }
 
