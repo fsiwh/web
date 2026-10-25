@@ -66,3 +66,22 @@ func TestAuditStorageFailureRetainsLogOutput(t *testing.T) {
 		t.Fatal("storage failure lost the event or was not reported")
 	}
 }
+
+func TestEditorialLabelsCannotIntroduceLogLines(t *testing.T) {
+	db, err := database.NewConnection(testdb.Path(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var logs bytes.Buffer
+	ctx := audit.WithLogger(context.Background(), slog.New(slog.NewTextHandler(&logs, nil)))
+	ctx = audit.WithRecorder(ctx, audit.NewStore(db))
+	audit.Content(ctx, "content.news_saved", "News\r\nforged-entry", "/news")
+	var label string
+	if err := db.QueryRow(`SELECT json_extract(details,'$.content_label') FROM audit_events`).Scan(&label); err != nil {
+		t.Fatal(err)
+	}
+	if label != "Newsforged-entry" || strings.Count(logs.String(), "\n") != 1 || strings.Contains(logs.String(), "\r") {
+		t.Fatal("content label retained log delimiters")
+	}
+}
