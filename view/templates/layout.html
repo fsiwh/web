@@ -295,7 +295,7 @@
         </div>
       </div>
     </footer>
-    {{ if and .SignedIn (ne .Active "session-expired") }}{{ template "session-warning" . }}{{ end }}
+    {{ if and .SignedIn (ne .Active "session-expired") (ne .Active "login") }}{{ template "session-warning" . }}{{ end }}
   </body>
 </html>
 {{ end }} {{ define "exams-content" }} {{ if and .Submission (not

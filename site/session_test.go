@@ -24,6 +24,9 @@ func TestSessionWarningAndExtensionPolicy(t *testing.T) {
 	if !strings.Contains(body, `id="session-warning"`) || !strings.Contains(body, `aria-live="polite"`) {
 		t.Fatal("accessible warning missing")
 	}
+	if status, body, _ := b.get("/login"); status != 200 || strings.Contains(body, `id="session-warning"`) {
+		t.Fatal("timeout warning blocks signing in again")
+	}
 	near := datetime.FormatUTC(time.Now().Add(time.Minute))
 	if _, err := db.Exec("UPDATE web_sessions SET idle_expires_at=? WHERE user_id=900", near); err != nil {
 		t.Fatal(err)
