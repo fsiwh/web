@@ -133,6 +133,12 @@
         </div>
         {{ if not .ReviewerOnly }}
           <div class="app-community-card">
+            <img class="app-community-card__image" src="/assets/community/share-your-examples-and-research.svg" alt="" width="320" height="180" loading="lazy" />
+            <h3 class="govuk-heading-m">Module</h3>
+            <p class="govuk-body">Finde Module und ihre zugehörigen Studiengänge und Abschlüsse.</p>
+            <p class="govuk-body"><a class="govuk-link" href="/admin/modules">Zu den Modulen</a></p>
+          </div>
+          <div class="app-community-card">
             <img
               class="app-community-card__image"
               src="/assets/community/discuss-and-give-feedback.svg"
@@ -152,6 +158,69 @@
           </div>
         {{ end }}
       </div>
+    {{ end }}
+
+    {{ if eq .View "modules" }}
+      <form action="/admin/modules" method="get" class="govuk-!-margin-bottom-6">
+        <div class="govuk-form-group govuk-!-margin-bottom-3">
+          <label class="govuk-label" for="module-search">Modulname</label>
+          <input class="govuk-input" id="module-search" name="search" type="search" value="{{ .Query }}" />
+        </div>
+        <div class="app-user-filters">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="module-program">Studiengang</label>
+            <select class="govuk-select" id="module-program" name="program">
+              <option value="">Alle</option>
+              {{ range .ModuleProgramOptions }}
+                <option value="{{ .Value }}" {{ if .Selected }}selected{{ end }}>{{ .Label }}</option>
+              {{ end }}
+            </select>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="module-degree">Abschluss</label>
+            <select class="govuk-select" id="module-degree" name="degree">
+              <option value="">Alle</option>
+              {{ range .ModuleDegreeOptions }}
+                <option value="{{ .Value }}" {{ if .Selected }}selected{{ end }}>{{ .Label }}</option>
+              {{ end }}
+            </select>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Anwenden</button>
+        </div>
+        {{ if .ModuleFiltersActive }}
+          <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-0"><a class="govuk-link" href="/admin/modules">Suche und Filter zurücksetzen</a></p>
+        {{ end }}
+      </form>
+      <h2 class="govuk-heading-m">{{ .Total }} {{ if eq .Total 1 }}Modul{{ else }}Module{{ end }} gefunden</h2>
+      {{ if .Modules }}
+        <table class="govuk-table app-admin-table app-exams-upload-table" role="table">
+          <caption class="govuk-visually-hidden">Module</caption>
+          <colgroup>
+            <col class="app-admin-modules__name" />
+            <col class="app-admin-modules__program" />
+            <col class="app-admin-modules__degree" />
+          </colgroup>
+          <thead class="govuk-table__head" role="rowgroup">
+            <tr class="govuk-table__row" role="row">
+              <th class="govuk-table__header" scope="col" role="columnheader">Modul</th>
+              <th class="govuk-table__header" scope="col" role="columnheader">Studiengang</th>
+              <th class="govuk-table__header" scope="col" role="columnheader">Abschluss</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body" role="rowgroup">
+            {{ range .Modules }}
+              <tr class="govuk-table__row" role="row">
+                <th class="govuk-table__header govuk-!-font-weight-regular" scope="row" role="rowheader">{{ .Title }}</th>
+                <td class="govuk-table__cell" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Studiengang</span><span>{{ .Program }}</span></td>
+                <td class="govuk-table__cell" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Abschluss</span><span>{{ if .Degree }}{{ .Degree }}{{ else }}Nicht angegeben{{ end }}</span></td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+        {{ template "list-pagination" .ModulePagination }}
+      {{ else }}
+        <p class="govuk-body">{{ if .ModuleFiltersActive }}Für diese Suche wurden keine Module gefunden. Passe die Suche oder die Filter an.{{ else }}Es sind noch keine Module vorhanden.{{ end }}</p>
+      {{ end }}
     {{ end }}
 
     {{ if eq .View "users" }}

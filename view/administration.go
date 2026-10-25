@@ -32,6 +32,7 @@ var AdminLinks = []AdminLink{
 	{"members", "Mitglieder", "/admin/members", "Organisation"},
 	{"roles", "Funktionen", "/admin/roles", "Organisation"},
 	{"meetings", "Sitzungen", "/admin/meetings", "Organisation"},
+	{"modules", "Module", "/admin/modules", "Vorgänge"},
 	{"submissions", "Einreichungen", "/admin/submissions", "Vorgänge"},
 	{"users", "Benutzerkonten", "/admin/users", "Zugänge"},
 	{"audit", "Aktivitäten", "/admin/audit", "Zugänge"},
@@ -49,6 +50,9 @@ type AdminPage struct {
 	Members                                                      []AdminMemberRow
 	Roles                                                        []AdminRoleRow
 	Users                                                        []User
+	Modules                                                      []AdminModule
+	ModuleProgram, ModuleDegree                                  string
+	ModuleProgramOptions, ModuleDegreeOptions                    []AdminOption
 	AuditEntries                                                 []AuditEntry
 	AuditEvent, AuditOutcome                                     string
 	AuditEventOptions, AuditOutcomeOptions                       []AdminOption
