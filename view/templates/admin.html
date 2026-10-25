@@ -139,6 +139,12 @@
             <p class="govuk-body"><a class="govuk-link" href="/admin/modules">Zu den Modulen</a></p>
           </div>
           <div class="app-community-card">
+            <img class="app-community-card__image" src="/assets/community/share-your-examples-and-research.svg" alt="" width="320" height="180" loading="lazy" />
+            <h3 class="govuk-heading-m">Studiengänge</h3>
+            <p class="govuk-body">Finde Studiengänge, ihre Abschlüsse und die Anzahl zugeordneter Module.</p>
+            <p class="govuk-body"><a class="govuk-link" href="/admin/programs">Zu den Studiengängen</a></p>
+          </div>
+          <div class="app-community-card">
             <img
               class="app-community-card__image"
               src="/assets/community/discuss-and-give-feedback.svg"
@@ -158,6 +164,59 @@
           </div>
         {{ end }}
       </div>
+    {{ end }}
+
+    {{ if eq .View "programs" }}
+      <form action="/admin/programs" method="get" class="govuk-!-margin-bottom-6">
+        <div class="govuk-form-group govuk-!-margin-bottom-3">
+          <label class="govuk-label" for="program-search">Studiengang</label>
+          <input class="govuk-input" id="program-search" name="search" type="search" value="{{ .Query }}" />
+        </div>
+        <div class="app-user-filters">
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="program-degree">Abschluss</label>
+            <select class="govuk-select" id="program-degree" name="degree">
+              <option value="">Alle</option>
+              <option value="bachelor" {{ if eq .ProgramDegree "bachelor" }}selected{{ end }}>Bachelor</option>
+              <option value="master" {{ if eq .ProgramDegree "master" }}selected{{ end }}>Master</option>
+            </select>
+          </div>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Anwenden</button>
+        </div>
+        {{ if .ProgramFiltersActive }}
+          <p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-0"><a class="govuk-link" href="/admin/programs">Suche und Filter zurücksetzen</a></p>
+        {{ end }}
+      </form>
+      <h2 class="govuk-heading-m">{{ .Total }} {{ if eq .Total 1 }}Studiengang{{ else }}Studiengänge{{ end }} gefunden</h2>
+      {{ if .StudyPrograms }}
+        <table class="govuk-table app-admin-table app-exams-upload-table" role="table">
+          <caption class="govuk-visually-hidden">Studiengänge</caption>
+          <colgroup>
+            <col class="app-admin-programs__name" />
+            <col class="app-admin-programs__degrees" />
+            <col class="app-admin-programs__modules" />
+          </colgroup>
+          <thead class="govuk-table__head" role="rowgroup">
+            <tr class="govuk-table__row" role="row">
+              <th class="govuk-table__header" scope="col" role="columnheader">Studiengang</th>
+              <th class="govuk-table__header" scope="col" role="columnheader">Abschlüsse</th>
+              <th class="govuk-table__header govuk-table__header--numeric" scope="col" role="columnheader">Module</th>
+            </tr>
+          </thead>
+          <tbody class="govuk-table__body" role="rowgroup">
+            {{ range .StudyPrograms }}
+              <tr class="govuk-table__row" role="row">
+                <th class="govuk-table__header govuk-!-font-weight-regular" scope="row" role="rowheader">{{ .Name }}</th>
+                <td class="govuk-table__cell" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Abschlüsse</span><span>{{ range $i, $degree := .Degrees }}{{ if $i }}, {{ end }}{{ $degree }}{{ else }}Nicht angegeben{{ end }}</span></td>
+                <td class="govuk-table__cell govuk-table__cell--numeric" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Module</span><span>{{ .Modules }}</span></td>
+              </tr>
+            {{ end }}
+          </tbody>
+        </table>
+        {{ template "list-pagination" .ProgramPagination }}
+      {{ else }}
+        <p class="govuk-body">{{ if .ProgramFiltersActive }}Für diese Suche wurden keine Studiengänge gefunden. Passe die Suche oder die Filter an.{{ else }}Es sind noch keine Studiengänge vorhanden.{{ end }}</p>
+      {{ end }}
     {{ end }}
 
     {{ if eq .View "modules" }}
