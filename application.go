@@ -32,6 +32,7 @@ import (
 type application struct {
 	handler http.Handler
 	db      *sql.DB
+	exams   *exams.Service
 	local   *disk.Store
 	cancel  context.CancelFunc
 	done    chan struct{}
@@ -92,6 +93,7 @@ func newApplication(ctx context.Context, databasePath, blobPath string) (_ *appl
 	}
 	identity := users.NewService(db, cfg.Domain, users.DomainPolicy{Registration: cfg.RegistrationDomains, Accounts: cfg.AccountDomains})
 	examDocuments := exams.NewService(db, objects)
+	app.exams = examDocuments
 	buildVersion := Version
 	if cfg.AppVersion != "" {
 		buildVersion = cfg.AppVersion

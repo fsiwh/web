@@ -9,7 +9,7 @@
               class="govuk-link govuk-link--no-visited-state govuk-link--no-underline"
               href="{{ .URL }}"
               {{ if eq $.Admin.Section .ID }}
-                aria-current="{{- if or (eq $.Admin.View "form") (eq $.Admin.View "user") (eq $.Admin.View "review") (eq $.Admin.View "reset") -}}
+                aria-current="{{- if or (eq $.Admin.View "form") (eq $.Admin.View "user") (eq $.Admin.View "review") (eq $.Admin.View "reset") (eq $.Admin.View "regulation") -}}
                   true
                 {{- else -}}
                   page

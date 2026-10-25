@@ -37,6 +37,7 @@ func run(ctx context.Context, args []string) error {
 	databasePath := flags.String("database", "data/sqlite.db", "Writable SQLite database path")
 	blobs := flags.String("blobs", "", "Local object directory; otherwise use configured S3 or blobs beside the database")
 	migrate := flags.Bool("migrate-only", false, "Apply database schema migrations and exit without loading site settings")
+	importRegulations := flags.String("import-regulations", "", "Import reviewed regulation PDFs from a directory into configured file storage and exit")
 	version := flags.Bool("version", false, "Print application version")
 	health := flags.String("check-health", "", "Check a running application's health URL and exit")
 	if err := flags.Parse(args); err != nil {
@@ -72,6 +73,9 @@ func run(ctx context.Context, args []string) error {
 		return err
 	}
 	defer app.Close()
+	if *importRegulations != "" {
+		return app.exams.ImportRegulationDocuments(ctx, *importRegulations)
+	}
 	listener, err := net.Listen("tcp", *addr)
 	if err != nil {
 		return err

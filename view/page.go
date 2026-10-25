@@ -51,7 +51,7 @@ func (p Page) Breadcrumbs() []Breadcrumb {
 		if p.Admin.Section != "" {
 			items = append(items, Breadcrumb{"Verwaltung", "/admin"})
 		}
-		if p.Admin.View == "form" || p.Admin.View == "user" || p.Admin.View == "review" || p.Admin.View == "reset" {
+		if p.Admin.View == "form" || p.Admin.View == "user" || p.Admin.View == "review" || p.Admin.View == "reset" || p.Admin.View == "regulation" {
 			items = append(items, Breadcrumb{p.Admin.SectionTitle, "/admin/" + p.Admin.Section})
 		}
 		if p.Admin.View == "reset" {

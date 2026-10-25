@@ -145,6 +145,12 @@
             <p class="govuk-body"><a class="govuk-link" href="/admin/programs">Zu den Studiengängen</a></p>
           </div>
           <div class="app-community-card">
+            <img class="app-community-card__image" src="/assets/community/share-your-examples-and-research.svg" alt="" width="320" height="180" loading="lazy" />
+            <h3 class="govuk-heading-m">Prüfungsordnungen</h3>
+            <p class="govuk-body">Finde Prüfungsordnungen, Modulhandbücher und die zugehörigen Änderungen.</p>
+            <p class="govuk-body"><a class="govuk-link" href="/admin/regulations">Zu den Prüfungsordnungen</a></p>
+          </div>
+          <div class="app-community-card">
             <img
               class="app-community-card__image"
               src="/assets/community/discuss-and-give-feedback.svg"
@@ -165,6 +171,9 @@
         {{ end }}
       </div>
     {{ end }}
+
+    {{ if eq .View "regulations" }}{{ template "admin-regulations" . }}{{ end }}
+    {{ if eq .View "regulation" }}{{ template "admin-regulation" . }}{{ end }}
 
     {{ if eq .View "programs" }}
       <form action="/admin/programs" method="get" class="govuk-!-margin-bottom-6">

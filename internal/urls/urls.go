@@ -67,6 +67,8 @@ const (
 	AdminUsersPath             = "/admin/users"
 	AdminModulesPath           = "/admin/modules"
 	AdminProgramsPath          = "/admin/programs"
+	AdminRegulationsPath       = "/admin/regulations"
+	AdminRegulationPattern     = AdminRegulationsPath + "/{program}"
 	AdminAuditPath             = "/admin/audit"
 	AdminSubmissionsPath       = "/admin/submissions"
 	AdminMemberPattern         = "/admin/members/{id}"
@@ -115,10 +117,13 @@ func EditAdminSubmission(id string) string { return AdminSubmission(id) + "/edit
 func Document(id string) string            { return "/documents/" + segment(id) }
 func User(id string) string                { return "/users/" + segment(id) }
 func AdminUser(id string) string           { return AdminUsersPath + "/" + segment(id) }
-func AdminMember(id string) string         { return AdminMembersPath + "/" + segment(id) }
-func AdminRole(id string) string           { return AdminRolesPath + "/" + segment(id) }
-func AdminMeeting(id string) string        { return AdminMeetingsPath + "/" + segment(id) }
-func EditAdminUser(id string) string       { return AdminUser(id) + "/reset" }
-func EditAdminMember(id string) string     { return AdminMember(id) + "/edit" }
-func EditAdminRole(id string) string       { return AdminRole(id) + "/edit" }
-func EditAdminMeeting(id string) string    { return AdminMeeting(id) + "/edit" }
+func AdminRegulation(program, version string) string {
+	return AdminRegulationsPath + "/" + segment(program) + "?version=" + url.QueryEscape(version)
+}
+func AdminMember(id string) string      { return AdminMembersPath + "/" + segment(id) }
+func AdminRole(id string) string        { return AdminRolesPath + "/" + segment(id) }
+func AdminMeeting(id string) string     { return AdminMeetingsPath + "/" + segment(id) }
+func EditAdminUser(id string) string    { return AdminUser(id) + "/reset" }
+func EditAdminMember(id string) string  { return AdminMember(id) + "/edit" }
+func EditAdminRole(id string) string    { return AdminRole(id) + "/edit" }
+func EditAdminMeeting(id string) string { return AdminMeeting(id) + "/edit" }

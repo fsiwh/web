@@ -1,0 +1,99 @@
+{{ define "admin-regulations" }}
+  <form action="/admin/regulations" method="get" class="govuk-!-margin-bottom-6">
+    <div class="govuk-form-group govuk-!-margin-bottom-3">
+      <label class="govuk-label" for="regulation-search">Studiengang oder PO</label>
+      <input class="govuk-input" id="regulation-search" name="search" type="search" value="{{ .Query }}" />
+    </div>
+    <div class="app-user-filters">
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="regulation-program">Studiengang</label>
+        <select class="govuk-select" id="regulation-program" name="program">
+          <option value="">Alle</option>
+          {{ range .RegulationProgramOptions }}<option value="{{ .Value }}" {{ if .Selected }}selected{{ end }}>{{ .Label }}</option>{{ end }}
+        </select>
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="regulation-degree">Abschluss</label>
+        <select class="govuk-select" id="regulation-degree" name="degree">
+          <option value="">Alle</option>
+          <option value="bachelor" {{ if eq .RegulationDegree "bachelor" }}selected{{ end }}>Bachelor</option>
+          <option value="master" {{ if eq .RegulationDegree "master" }}selected{{ end }}>Master</option>
+        </select>
+      </div>
+      <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit">Anwenden</button>
+    </div>
+    {{ if .RegulationFiltersActive }}<p class="govuk-body govuk-!-margin-top-3 govuk-!-margin-bottom-0"><a class="govuk-link" href="/admin/regulations">Suche und Filter zurücksetzen</a></p>{{ end }}
+  </form>
+  <h2 class="govuk-heading-m">{{ .Total }} {{ if eq .Total 1 }}Prüfungsordnung{{ else }}Prüfungsordnungen{{ end }} gefunden</h2>
+  {{ if .Regulations }}
+    <table class="govuk-table app-admin-table app-exams-upload-table" role="table">
+      <caption class="govuk-visually-hidden">Prüfungsordnungen und Modulhandbücher</caption>
+      <colgroup><col class="app-admin-regulations__version" /><col class="app-admin-regulations__program" /><col class="app-admin-regulations__degree" /><col class="app-admin-regulations__documents" /></colgroup>
+      <thead class="govuk-table__head" role="rowgroup">
+        <tr class="govuk-table__row" role="row">
+          <th class="govuk-table__header" scope="col" role="columnheader">PO</th>
+          <th class="govuk-table__header" scope="col" role="columnheader">Studiengang</th>
+          <th class="govuk-table__header" scope="col" role="columnheader">Abschluss</th>
+          <th class="govuk-table__header" scope="col" role="columnheader">Dokumente</th>
+        </tr>
+      </thead>
+      <tbody class="govuk-table__body" role="rowgroup">
+        {{ range .Regulations }}
+          <tr class="govuk-table__row" role="row">
+            <th class="govuk-table__header govuk-!-font-weight-regular" scope="row" role="rowheader"><a class="govuk-link" href="{{ .URL }}">{{ .Version }}<span class="govuk-visually-hidden"> – {{ .Program }} ({{ .Degree }}), Details</span></a></th>
+            <td class="govuk-table__cell" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Studiengang</span><span>{{ .Program }}</span></td>
+            <td class="govuk-table__cell" role="cell"><span class="app-exams-upload-label" aria-hidden="true">Abschluss</span><span>{{ if .Degree }}{{ .Degree }}{{ else }}Nicht angegeben{{ end }}</span></td>
+            <td class="govuk-table__cell" role="cell">
+              <span class="app-exams-upload-label" aria-hidden="true">Dokumente</span>
+              {{ if .PO.URL }}
+                <ul class="govuk-list govuk-!-margin-bottom-0">
+                  <li><a class="govuk-link" href="{{ .PO.URL }}">Prüfungsordnung (PDF)<span class="govuk-visually-hidden"> – {{ .Program }}, {{ .Degree }}, PO {{ .Version }}</span></a></li>
+                  <li><a class="govuk-link" href="{{ .Handbook.URL }}">Modulhandbuch (PDF)<span class="govuk-visually-hidden"> – {{ .Program }}, {{ .Degree }}, PO {{ .Version }}</span></a></li>
+                </ul>
+              {{ else }}<span>Noch nicht zugeordnet</span>{{ end }}
+            </td>
+          </tr>
+        {{ end }}
+      </tbody>
+    </table>
+    {{ template "list-pagination" .RegulationPagination }}
+  {{ else }}
+    <p class="govuk-body">{{ if .RegulationFiltersActive }}Für diese Suche wurden keine Prüfungsordnungen gefunden. Passe die Suche oder die Filter an.{{ else }}Es sind noch keine Prüfungsordnungen hinterlegt.{{ end }}</p>
+  {{ end }}
+{{ end }}
+
+{{ define "admin-regulation" }}
+  {{ with .Regulation }}
+    {{ if .Note }}<div class="govuk-inset-text">{{ .Note }}</div>{{ end }}
+    {{ if .PO.URL }}
+      <h2 class="govuk-heading-m">Dokumente</h2>
+      <dl class="govuk-summary-list">
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Prüfungsordnung</dt>
+          <dd class="govuk-summary-list__value"><a class="govuk-link" href="{{ .PO.URL }}">Prüfungsordnung (PDF)</a>{{ if .PO.Date }}<p class="govuk-body govuk-!-margin-bottom-0">Stand: {{ .PO.DateLabel }}</p>{{ end }}</dd>
+        </div>
+        <div class="govuk-summary-list__row">
+          <dt class="govuk-summary-list__key">Modulhandbuch</dt>
+          <dd class="govuk-summary-list__value"><a class="govuk-link" href="{{ .Handbook.URL }}">Modulhandbuch (PDF)</a><p class="govuk-body govuk-!-margin-bottom-0">Stand: {{ .Handbook.DateLabel }}</p></dd>
+        </div>
+        {{ range .Additional }}
+          <div class="govuk-summary-list__row"><dt class="govuk-summary-list__key">{{ .Title }}</dt><dd class="govuk-summary-list__value"><a class="govuk-link" href="{{ .URL }}">{{ .Title }} (PDF)</a>{{ if .Date }}<p class="govuk-body govuk-!-margin-bottom-0">Stand: {{ .DateLabel }}</p>{{ end }}</dd></div>
+        {{ end }}
+      </dl>
+      {{ if .Amendments }}
+        <h2 class="govuk-heading-m">Änderungssatzungen</h2>
+        <ul class="govuk-list govuk-list--spaced">
+          {{ range .Amendments }}<li><a class="govuk-link" href="{{ .URL }}">{{ .Title }} (PDF)</a></li>{{ end }}
+        </ul>
+      {{ end }}
+      <h2 class="govuk-heading-m">Weitere Informationen</h2>
+      <ul class="govuk-list">
+        <li><a class="govuk-link" href="{{ .FrameworkURL }}">Rahmenprüfungsordnung und Änderungen bei der WHS</a></li>
+        <li><a class="govuk-link" href="{{ .SourceURL }}">Prüfungsordnungen bei der WHS</a></li>
+        <li><a class="govuk-link" href="{{ .HandbookSourceURL }}">Modulhandbücher bei der WHS</a></li>
+      </ul>
+    {{ else }}
+      <p class="govuk-body">Für diese Zuordnung sind noch keine geprüften Dokumentlinks hinterlegt.</p>
+    {{ end }}
+  {{ end }}
+{{ end }}
