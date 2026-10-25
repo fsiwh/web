@@ -327,6 +327,16 @@ type RefUserRole struct {
 	Role string `json:"role"`
 }
 
+type RegulationDocument struct {
+	ID         string `json:"id"`
+	SourceUrl  string `json:"source_url"`
+	Filename   string `json:"filename"`
+	BlobKey    string `json:"blob_key"`
+	Sha256     string `json:"sha256"`
+	Nbytes     int64  `json:"nbytes"`
+	ImportedAt string `json:"imported_at"`
+}
+
 type Responsibility struct {
 	ID        string `json:"id"`
 	GroupName string `json:"group_name"`
