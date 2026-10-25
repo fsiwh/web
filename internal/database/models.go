@@ -407,7 +407,10 @@ type UserToken struct {
 }
 
 type WebSession struct {
-	ID        string `json:"id"`
-	UserID    *int64 `json:"user_id"`
-	ExpiresAt string `json:"expires_at"`
+	ID            string  `json:"id"`
+	UserID        *int64  `json:"user_id"`
+	ExpiresAt     string  `json:"expires_at"`
+	IdleExpiresAt *string `json:"idle_expires_at"`
+	Remembered    int64   `json:"remembered"`
+	LoginRole     string  `json:"login_role"`
 }

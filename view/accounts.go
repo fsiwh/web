@@ -13,6 +13,7 @@ type InvitationPage struct {
 // LoginPage never retains a submitted password.
 type LoginPage struct {
 	Email, EmailError, PasswordError string
+	Remember                         bool
 }
 
 // RegisterPage never retains a submitted password.

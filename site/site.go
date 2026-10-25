@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/fachschaftinformatik/web/internal/audit"
 
@@ -161,6 +162,11 @@ func (c *Handler) renderStatus(w http.ResponseWriter, page string, fragment bool
 		data.SignedIn, data.CSRF = response.session.Authenticated, response.session.CSRF
 		data.CanAdmin = response.session.CanReview()
 		data.UserID, data.Role = response.session.UserID, response.session.Role
+		if data.SignedIn {
+			data.SessionDeadline = response.session.Deadline().UnixMilli()
+			data.SessionAbsolute = response.session.Expires.UnixMilli()
+			data.SessionNow = time.Now().UnixMilli()
+		}
 	}
 	var html bytes.Buffer
 	if err := c.views.Render(&html, page, fragment, data); err != nil {

@@ -390,7 +390,7 @@ function wrapDialogFocus(dialog: HTMLDialogElement, event: KeyboardEvent) {
   if (event.key !== "Tab") return;
   const actions = [
     ...dialog.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]"),
-  ];
+  ].filter((element) => element.getClientRects().length > 0);
   const first = actions.at(0);
   const last = actions.at(-1);
   if (!first || !last) return;
@@ -715,6 +715,174 @@ function initExamSearchFeedback() {
   });
 }
 
+function initSessionWarning() {
+  const candidate =
+    document.querySelector<HTMLDialogElement>("#session-warning");
+  if (!candidate || typeof candidate.showModal !== "function") return;
+  const dialog = candidate;
+  const stay = requireElement<HTMLButtonElement>("#session-continue", dialog);
+  const signIn = requireElement<HTMLAnchorElement>("#session-sign-in", dialog);
+  const countdown = requireElement("#session-countdown", dialog);
+  const description = requireElement("#session-warning-description", dialog);
+  const error = requireElement("#session-warning-error", dialog);
+  let deadline = Number(dialog.dataset.deadline);
+  let absolute = Number(dialog.dataset.absolute);
+  let offset = Number(dialog.dataset.now) - Date.now();
+  let previousFocus: HTMLElement | null = null;
+  let pending = false;
+  let active = false;
+  let lastExtension = Date.now();
+  let lastAnnouncement = "";
+
+  function closeWarning() {
+    if (!dialog?.open) return;
+    dialog.close();
+    previousFocus?.focus();
+    lastAnnouncement = "";
+  }
+
+  async function sync(extend = false) {
+    if (pending) return;
+    pending = true;
+    stay.disabled = true;
+    try {
+      const response = await fetch(extend ? "/session/extend" : "/session", {
+        method: extend ? "POST" : "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: extend
+          ? { "Content-Type": "application/x-www-form-urlencoded" }
+          : {},
+        body: extend
+          ? new URLSearchParams({ csrf: dialog?.dataset.csrf ?? "" })
+          : undefined,
+      });
+      if (response.status === 401 || response.status === 403) {
+        window.location.replace("/session/expired");
+        return;
+      }
+      if (!response.ok) throw new Error("Session status unavailable");
+      const state: unknown = await response.json();
+      if (
+        typeof state !== "object" ||
+        state === null ||
+        !("deadline" in state) ||
+        typeof state.deadline !== "number" ||
+        !("absolute" in state) ||
+        typeof state.absolute !== "number" ||
+        !("now" in state) ||
+        typeof state.now !== "number" ||
+        !Number.isFinite(state.deadline) ||
+        !Number.isFinite(state.absolute) ||
+        !Number.isFinite(state.now)
+      )
+        throw new Error("Invalid session status");
+      deadline = state.deadline;
+      absolute = state.absolute;
+      offset = state.now - Date.now();
+      error.hidden = true;
+      if (extend) {
+        lastExtension = Date.now();
+        active = false;
+      }
+      if (deadline - (Date.now() + offset) > 120_000) closeWarning();
+    } catch {
+      if (extend || dialog?.open) error.hidden = false;
+    } finally {
+      pending = false;
+      stay.disabled = false;
+    }
+  }
+
+  async function continueSession() {
+    if (absolute - (Date.now() + offset) <= 120_000) {
+      window.location.assign("/login");
+      return;
+    }
+    await sync(true);
+  }
+
+  function tick() {
+    const now = Date.now() + offset;
+    const remaining = deadline - now;
+    if (remaining <= 0) {
+      void sync(); // Another tab may have extended the server-side deadline.
+      return;
+    }
+    if (remaining > 120_000) return;
+    const atLimit = absolute - now <= 120_000;
+    stay.hidden = atLimit;
+    signIn.hidden = !atLimit;
+    description.textContent = atLimit
+      ? "Die maximale Sitzungsdauer ist bald erreicht. Melde dich erneut an, um fortzufahren. Nicht gespeicherte Eingaben können dabei verloren gehen."
+      : "Ohne weitere Aktivität wirst du automatisch abgemeldet. Nicht gespeicherte Eingaben können dabei verloren gehen.";
+    const seconds = Math.ceil(remaining / 1000);
+    const message =
+      seconds > 60
+        ? `Verbleibende Zeit: ${Math.ceil(seconds / 60)} Minuten.`
+        : `Verbleibende Zeit: ${Math.ceil(seconds / 20) * 20} Sekunden.`;
+    if (!dialog?.open) {
+      previousFocus =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
+      dialog?.showModal();
+      requireElement("h2", dialog).focus();
+    }
+    if (message !== lastAnnouncement) {
+      countdown.textContent = message;
+      lastAnnouncement = message;
+    }
+  }
+
+  stay.addEventListener("click", () => void continueSession());
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    void continueSession();
+  });
+  dialog.addEventListener("keydown", (event) => wrapDialogFocus(dialog, event));
+  const markActive = (event: Event) => {
+    if (event.isTrusted && !dialog.open && !document.hidden) active = true;
+  };
+  for (const name of ["keydown", "pointerdown", "input", "scroll"]) {
+    document.addEventListener(name, markActive, {
+      passive: true,
+      capture: true,
+    });
+  }
+  // Rich-text editors use same-origin iframes; typing there is activity too.
+  document.addEventListener(
+    "load",
+    (event) => {
+      const frame = event.target;
+      if (!(frame instanceof HTMLIFrameElement)) return;
+      try {
+        for (const name of ["keydown", "pointerdown", "input"]) {
+          frame.contentDocument?.addEventListener(name, markActive, {
+            passive: true,
+          });
+        }
+      } catch {
+        /* Cross-origin frames are not part of the editing interface. */
+      }
+    },
+    true,
+  );
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) void sync();
+  });
+  window.addEventListener("pageshow", () => void sync());
+  window.setInterval(() => {
+    if (active && !dialog.open && Date.now() - lastExtension >= 60_000) {
+      void sync(true);
+    } else {
+      void sync();
+    }
+  }, 15_000);
+  window.setInterval(tick, 1000);
+  tick();
+}
+
 function initSite() {
   initFrontend(document);
   document.querySelectorAll<HTMLFormElement>("form.app-vote").forEach(initVote);
@@ -726,6 +894,7 @@ function initSite() {
   initMediaViewer();
   initExamFilters();
   initExamSearchFeedback();
+  initSessionWarning();
 }
 
 initSite();

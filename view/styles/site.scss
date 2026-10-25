@@ -971,6 +971,9 @@
 .app-dialog::backdrop { background: rgb(11 12 12 / 65%); }
 .app-dialog:not([open]) { display: none; }
 .app-dialog .govuk-button-group { margin-bottom: 0; }
+.app-session-warning .govuk-button-group form { display: flex; margin: 0; }
+.app-session-warning [hidden] { display: none !important; }
+body:has(.app-session-warning[open]) { overflow: hidden; }
 .app-dialog h2:focus { outline: 3px solid #ffdd00; }
 .app-user-pagination .govuk-pagination__item { display: block; }
 

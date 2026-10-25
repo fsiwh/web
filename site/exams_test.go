@@ -289,6 +289,12 @@ INSERT INTO users(id,email,name,password,active,verified) VALUES (1,'author@fsv-
 	if _, err := db.Exec(`UPDATE users SET role='editor' WHERE id=1`); err != nil {
 		t.Fatal(err)
 	}
+	session, err = users.NewService(db, "http://example.org", users.DomainPolicy{Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}).CreateSession(context.Background(), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.client.Jar.SetCookies(base, []*http.Cookie{{Name: sessionCookie, Value: session.ID, Path: "/"}})
+	csrf = session.CSRF
 	if status, body, _ := b.get("/admin/submissions"); status != 200 || !strings.Contains(body, requestID) {
 		t.Fatal("editor cannot find submitted request")
 	}
