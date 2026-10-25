@@ -5,6 +5,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/fachschaftinformatik/web/internal/audit"
+	"github.com/fachschaftinformatik/web/internal/urls"
 	"sort"
 	"strings"
 	"time"
@@ -232,6 +234,7 @@ func (s *Service) Save(ctx context.Context, user int64, event string, d Draft, r
 		return "", err
 	}
 	committed = true
+	audit.Content(ctx, "content.event_saved", strings.TrimSpace(d.Title), urls.Event(ref))
 	if validCoverKey(oldKey) && oldKey != coverKey && s.storage != nil {
 		_ = s.storage.Delete(context.WithoutCancel(ctx), oldKey)
 	}

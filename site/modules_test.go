@@ -62,7 +62,7 @@ func TestAdminModuleListFiltersAndPagination(t *testing.T) {
 	if _, err := db.Exec("UPDATE users SET role='editor' WHERE id=900"); err != nil {
 		t.Fatal(err)
 	}
-	if status, _, _ := b.get("/admin/modules"); status != 403 {
-		t.Fatal("editor accessed module management")
+	if status, _, _ := b.get("/admin/modules"); status != 200 {
+		t.Fatal("editor could not access module list")
 	}
 }

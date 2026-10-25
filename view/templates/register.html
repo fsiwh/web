@@ -61,10 +61,9 @@
         />
       </div>
       <div class="govuk-form-group {{ if .Register.EmailError }}govuk-form-group--error{{ end }}">
-        <label class="govuk-label" for="email">E-Mail-Adresse</label>
+        <label class="govuk-label" for="email">Hochschul-E-Mail-Adresse</label>
         <div class="govuk-hint" id="email-hint">
-          Nutze deine Hochschul-E-Mail-Adresse ({{ .RegistrationDomains }}) und bestätige sie über
-          den Link in unserer E-Mail. So prüfen wir, ob du eingeschrieben bist.
+          Nur Adressen mit der Endung <strong class="govuk-!-font-weight-bold">{{ .RegistrationDomains }}</strong>.
         </div>
         {{ if .Register.EmailError }}
           <p class="govuk-error-message" id="email-error">
@@ -80,7 +79,7 @@
           spellcheck="false"
           autocapitalize="none"
           value="{{ .Register.Email }}"
-          aria-describedby="email-hint{{ if .Register.EmailError }}email-error{{ end }}"
+          aria-describedby="email-hint{{ if .Register.EmailError }} email-error{{ end }}"
           {{ if .Register.EmailError }}aria-invalid="true"{{ end }}
         />
       </div>

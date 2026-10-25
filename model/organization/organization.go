@@ -109,7 +109,7 @@ func (s *Store) Current() Details { s.mu.RLock(); defer s.mu.RUnlock(); return c
 // Read includes revision updates made by changes to linked legal contacts.
 func (s *Store) Read(ctx context.Context) (Details, error) { return Load(ctx, s.db) }
 
-var ErrForbidden = errors.New("organization settings require an active verified administrator")
+var ErrForbidden = errors.New("insufficient permission for these organization settings")
 
 // Save authorizes and commits the complete record before publishing a new snapshot.
 func (s *Store) Save(ctx context.Context, user int64, d Details) (map[string]string, error) {
@@ -120,12 +120,11 @@ func (s *Store) Save(ctx context.Context, user int64, d Details) (map[string]str
 		return nil, err
 	}
 	defer tx.Rollback()
-	var allowed int
-	if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM users WHERE id=? AND active=1 AND verified=1 AND role='admin' AND deleted_at IS NULL", user).Scan(&allowed); err != nil {
-		return nil, err
-	}
-	if allowed != 1 {
+	var role string
+	if err = tx.QueryRowContext(ctx, "SELECT role FROM users WHERE id=? AND active=1 AND verified=1 AND role IN ('admin','editor') AND deleted_at IS NULL", user).Scan(&role); errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrForbidden
+	} else if err != nil {
+		return nil, err
 	}
 	// The revision date is derived from changes to the information used by
 	// legal pages, never from a submitted date or an unchanged form save.
@@ -136,6 +135,18 @@ func (s *Store) Save(ctx context.Context, user int64, d Details) (map[string]str
 	var before Details
 	if err := json.Unmarshal([]byte(rawBefore), &before); err != nil {
 		return nil, err
+	}
+	if role == "editor" {
+		// Only editorial fields may differ, even when the service is called
+		// directly or an old form submits a stale complete record.
+		protected := d
+		protected.City, protected.Street, protected.PostalCode, protected.Country, protected.Office = before.City, before.Street, before.PostalCode, before.Country, before.Office
+		protected.ContactEmail, protected.ChairRole, protected.PublicityRole = before.ContactEmail, before.ChairRole, before.PublicityRole
+		protected.SocialLinks, protected.ElectionLinks = before.SocialLinks, before.ElectionLinks
+		protected.LegalUpdated = before.LegalUpdated
+		if !reflect.DeepEqual(protected, before) {
+			return nil, ErrForbidden
+		}
 	}
 	d.LegalUpdated = before.LegalUpdated
 	after := d

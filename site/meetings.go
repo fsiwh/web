@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fachschaftinformatik/web/internal/audit"
 	"github.com/fachschaftinformatik/web/internal/publicid"
 	"github.com/fachschaftinformatik/web/internal/urls"
 	"github.com/fachschaftinformatik/web/model/meetings"
@@ -154,6 +155,7 @@ func (c *Handler) ReviewPublication(w http.ResponseWriter, r *http.Request) {
 			a.Message = err.Error()
 			status = http.StatusUnprocessableEntity
 		} else {
+			audit.Content(r.Context(), "content.meeting_published", p.Kind+" · "+p.Date, urls.MeetingsPath)
 			flash(w, "Das Dokument wurde veröffentlicht.")
 			http.Redirect(w, r, urls.AdminMeetingsPath, http.StatusSeeOther)
 			return

@@ -32,6 +32,7 @@ func (a AuditAccount) URL() string {
 type AuditEntry struct {
 	OccurredAt, Event, Outcome string
 	Actor, User                AuditAccount
+	Content, ContentURL        string
 }
 
 func (e AuditEntry) TimeLabel() string {
@@ -55,6 +56,7 @@ func (e AuditEntry) OutcomeLabel() string { return AuditOutcomeLabel(e.Outcome) 
 
 func AuditEventLabel(event string) string {
 	labels := map[string]string{
+		"content.news_saved": "Nachricht gespeichert", "content.discussion_saved": "Diskussion gespeichert", "content.comment_edited": "Kommentar bearbeitet", "content.event_saved": "Veranstaltung gespeichert", "content.meeting_published": "Sitzungsdokument veröffentlicht", "content.photo_visibility": "Fotosichtbarkeit geändert", "content.member_saved": "Teamprofil bearbeitet", "content.function_saved": "Funktion gespeichert", "content.settings_saved": "Stammdaten gespeichert",
 		"account.login": "Anmeldung", "account.logout": "Abmeldung",
 		"account.register": "Registrierung", "account.password_reset_requested": "Passwort angefordert",
 		"account.password_reset": "Passwort zurückgesetzt", "account.email_confirmed": "E-Mail bestätigt",

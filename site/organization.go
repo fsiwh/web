@@ -5,12 +5,19 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/fachschaftinformatik/web/internal/audit"
 	"github.com/fachschaftinformatik/web/model/organization"
 	"github.com/fachschaftinformatik/web/view"
 )
 
 func (c *Handler) OrganizationSettings(w http.ResponseWriter, r *http.Request, a *view.AdminPage) {
 	id := r.PathValue("id")
+	editor := !w.(*sessionResponse).session.CanAdmin()
+	readOnly := editor && (id == "identity" || id == "legal")
+	if readOnly && r.Method == http.MethodPost {
+		c.pageError(w, "Du hast keine Berechtigung für diese Stammdaten.", http.StatusForbidden)
+		return
+	}
 	if id == "" {
 		a.View = "settings"
 		roles := append(c.members.Roles("board"), c.members.Roles("departments")...)
@@ -83,6 +90,9 @@ func (c *Handler) OrganizationSettings(w http.ResponseWriter, r *http.Request, a
 			return
 		}
 		if len(fields) == 0 {
+			if id == "contact" || id == "links" {
+				audit.Content(r.Context(), "content.settings_saved", title, "/admin/settings/"+id)
+			}
 			flash(w, "Die Änderungen wurden gespeichert.")
 			http.Redirect(w, r, "/admin/settings", http.StatusSeeOther)
 			return
@@ -90,6 +100,10 @@ func (c *Handler) OrganizationSettings(w http.ResponseWriter, r *http.Request, a
 	}
 	roles := append(c.members.Roles("board"), c.members.Roles("departments")...)
 	a.View, a.Action = "form", r.URL.Path
+	if readOnly {
+		a.View = "settings-readonly"
+		a.ReadOnly = true
+	}
 	a.Fields = view.OrganizationSettingsFields(id, organizationView(d), mapRecords(roles, memberRoleView))
 	view.AttachErrors(a.Fields, fields)
 	status := http.StatusOK

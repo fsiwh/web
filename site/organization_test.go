@@ -71,9 +71,10 @@ func TestMasterDataFollowsAdminFormAndPublicationPatterns(t *testing.T) {
 	if _, err := db.Exec("UPDATE users SET role='editor' WHERE id=900"); err != nil {
 		t.Fatal(err)
 	}
-	if status, _, _ := b.get("/admin/settings"); status != 403 {
-		t.Fatal("editor can access master data")
+	if status, _, _ := b.get("/admin/settings"); status != 200 {
+		t.Fatal("editor cannot access master data")
 	}
+	details.Name = "Protected identity"
 	if _, err := c.organization.Save(context.Background(), 900, details); err != organization.ErrForbidden {
 		t.Fatal("model accepted non-administrator", err)
 	}

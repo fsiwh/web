@@ -19,6 +19,7 @@ func (c *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 	}
 	section, id := r.PathValue("section"), r.PathValue("id")
 	a := &view.AdminPage{Section: section, View: "index", Success: takeFlash(w)}
+	a.ReviewerOnly = !w.(*sessionResponse).session.CanAdmin()
 	if section == "" {
 		c.adminRender(w, "Verwaltung", a, http.StatusOK)
 		return
@@ -120,6 +121,12 @@ func (c *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 		roles = append(roles, c.members.Roles("project")...)
 		for _, member := range members {
 			row := view.AdminMemberRow{Member: memberView(member)}
+			if a.ReviewerOnly {
+				row.Member.UserID = 0
+				row.Member.UserPublicID = ""
+				row.Member.AccountEmail = ""
+				row.Member.Confirmed = false
+			}
 			for _, role := range roles {
 				if slices.Contains(role.MemberIDs, member.ID) {
 					row.Roles = append(row.Roles, role.Title+" ("+view.MemberRoleKind(role.Group)+")")

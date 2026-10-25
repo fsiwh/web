@@ -108,10 +108,13 @@ func TestPersistentPosts(t *testing.T) {
 	if !publicid.Valid(comment) {
 		t.Fatalf("noncanonical public comment ID %q", comment)
 	}
-	for _, user := range []int64{0, 2, 3, 5, 6} {
+	for _, user := range []int64{0, 2, 5, 6} {
 		if _, err = s.SaveComment(ctx, user, post, comment, "Ein anderer Text."); !errors.Is(err, ErrForbidden) {
 			t.Fatalf("comment edit user %d: %v", user, err)
 		}
+	}
+	if _, err = s.SaveComment(ctx, 3, post, comment, "Redaktionell bearbeiteter Kommentar."); err != nil {
+		t.Fatal("editor moderation denied", err)
 	}
 	if _, err = s.SaveComment(ctx, 7, post, comment, "Eigener neuer Kommentar."); err != nil {
 		t.Fatal(err)

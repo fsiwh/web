@@ -53,8 +53,8 @@ func TestAdminRegulationListAndSourceDetails(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{urls.AdminRegulationsPath, urls.AdminRegulation(program, "2023")} {
-		if status, _, _ := b.get(path); status != 403 {
-			t.Fatal("editor accessed PO administration", path)
+		if status, _, _ := b.get(path); status != 200 {
+			t.Fatal("editor could not access PO directory", path)
 		}
 	}
 }

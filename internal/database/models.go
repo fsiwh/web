@@ -279,11 +279,12 @@ type PeopleState struct {
 }
 
 type Person struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	UserID   *int64 `json:"user_id"`
-	Position int64  `json:"position"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Email      string `json:"email"`
+	UserID     *int64 `json:"user_id"`
+	Position   int64  `json:"position"`
+	PublicName string `json:"public_name"`
 }
 
 type Program struct {

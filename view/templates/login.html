@@ -20,9 +20,6 @@
     <input type="hidden" name="csrf" value="{{ .CSRF }}" />
     <div class="govuk-form-group {{ if .Login.EmailError }}govuk-form-group--error{{ end }}">
       <label class="govuk-label" for="email">E-Mail-Adresse</label>
-      <div class="govuk-hint" id="email-hint">
-        Nutze deine E-Mail-Adresse mit {{ .AccountDomains }}.
-      </div>
       {{ if .Login.EmailError }}
         <p class="govuk-error-message" id="email-error">
           <span class="govuk-visually-hidden">Fehler:</span> {{ .Login.EmailError }}
@@ -37,8 +34,7 @@
         spellcheck="false"
         autocapitalize="none"
         value="{{ .Login.Email }}"
-        aria-describedby="email-hint{{ if .Login.EmailError }}email-error{{ end }}"
-        {{ if .Login.EmailError }}aria-invalid="true"{{ end }}
+        {{ if .Login.EmailError }}aria-describedby="email-error" aria-invalid="true"{{ end }}
       />
     </div>
     <div

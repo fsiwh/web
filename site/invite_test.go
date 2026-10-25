@@ -64,7 +64,7 @@ func TestMemberInvitationRegistrationJourney(t *testing.T) {
 	if status, _, _ := invitee.get("/admin/submissions"); status != 200 {
 		t.Fatal("reviewer cannot access submissions")
 	}
-	for _, path := range []string{"/admin/users", "/admin/members", "/admin/roles", "/admin/roles/create", "/admin/meetings"} {
+	for _, path := range []string{"/admin/users", "/admin/members/create"} {
 		if status, _, _ := invitee.get(path); status != 403 {
 			t.Fatalf("invitation granted administration of %s", path)
 		}
@@ -113,7 +113,10 @@ func TestExistingMemberInvitationAndAccountEditing(t *testing.T) {
 	if status, _, _ := b.post(memberPath, url.Values{"csrf": {csrfFrom(t, body)}, "name": {"Updated Member"}, "email": {"unexpected@studmail.w-hs.de"}}); status != 303 {
 		t.Fatal("linked member name edit failed")
 	}
-	if status, body, _ := b.get(accountPath); status != 200 || !strings.Contains(body, "Updated Member") || !strings.Contains(body, "linked@studmail.w-hs.de") || !strings.Contains(body, `href="`+memberPath+`"`) {
-		t.Fatal("account and membership are not connected")
+	if status, body, _ := b.get(accountPath); status != 200 || strings.Contains(body, "Updated Member") || !strings.Contains(body, "Linked Member") || !strings.Contains(body, "linked@studmail.w-hs.de") || !strings.Contains(body, `href="`+memberPath+`"`) {
+		t.Fatal("public name edit changed account identity or linkage")
+	}
+	if status, body, _ := b.get("/team"); status != 200 || !strings.Contains(body, "Updated Member") {
+		t.Fatal("public name edit not shown")
 	}
 }

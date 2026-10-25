@@ -9,7 +9,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/fachschaftinformatik/web/internal/audit"
 	"github.com/fachschaftinformatik/web/internal/content"
+	"github.com/fachschaftinformatik/web/internal/urls"
 
 	"github.com/fachschaftinformatik/web/internal/publicid"
 )
@@ -37,7 +39,7 @@ func permission(ctx context.Context, db querier, user, owner int64, comments boo
 	if err != nil {
 		return err
 	}
-	if owner != 0 && owner != user && role != "admin" && (comments || role != "editor") {
+	if owner != 0 && owner != user && role != "admin" && role != "editor" {
 		return ErrForbidden
 	}
 	return nil
@@ -250,10 +252,19 @@ func (s *Service) Save(ctx context.Context, user int64, post string, d Draft, ri
 	if err != nil {
 		return "", err
 	}
-	return ref, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+	eventName := "content.discussion_saved"
+	if d.Type == "news" {
+		eventName = "content.news_saved"
+	}
+	audit.Content(ctx, eventName, d.Title, urls.Post(ref))
+	return ref, nil
 }
 
 func (s *Service) SaveComment(ctx context.Context, user int64, post, comment, text string) (string, error) {
+	edited := comment != ""
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", err
@@ -309,7 +320,16 @@ func (s *Service) SaveComment(ctx context.Context, user int64, post, comment, te
 	if err != nil {
 		return "", err
 	}
-	return ref, tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+	if edited {
+		postRef, err := publicid.Lookup(ctx, s.db, "posts", post)
+		if err == nil {
+			audit.Content(ctx, "content.comment_edited", title, urls.Post(postRef))
+		}
+	}
+	return ref, nil
 }
 
 // CommentPage keeps edit/vote redirects on the page containing the comment.
