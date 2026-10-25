@@ -61,7 +61,8 @@ func (s *Service) Regulations(ctx context.Context) (RegulationDirectory, error) 
 		}
 		for j := range sources {
 			source := &sources[j]
-			if source.Program == r.Program && source.Degree == r.Degree && source.Version == r.Version {
+			programMatches := source.Program == r.Program || source.Program == "Internet-Sicherheit" && r.Program == "Internetsicherheit"
+			if programMatches && source.Degree == r.Degree && source.Version == r.Version {
 				r.Source = source
 				break
 			}
