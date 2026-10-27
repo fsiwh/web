@@ -58,7 +58,7 @@ func TestConcreteRoutePolicies(t *testing.T) {
 		}
 	}
 	b.login()
-	for _, path := range []string{"/logout", "/posts/create", "/events/create", "/exams/settings", "/exams/submissions/create", "/admin/settings/identity", "/admin/members/create", "/admin/roles/create", "/admin/meetings/create", "/admin/submissions/1/review", "/admin/users/900/confirm"} {
+	for _, path := range []string{"/logout", "/posts/create", "/events/create", "/exams/settings", "/exams/submissions/create", "/admin/settings/identity", "/admin/users/create", "/admin/roles/create", "/admin/meetings/create", "/admin/submissions/1/review", "/admin/users/900/confirm"} {
 		path = strings.NewReplacer("/1", "/AAAAAAAAAAA", "/900", "/AAAAAAAAAAA").Replace(path)
 		if code, _, _ := b.post(path, url.Values{}); code != 403 {
 			t.Fatalf("missing CSRF accepted at %s: %d", path, code)
@@ -67,12 +67,12 @@ func TestConcreteRoutePolicies(t *testing.T) {
 	if _, err := db.Exec("UPDATE users SET role='editor' WHERE id=900"); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/admin/users", "/admin/members/create"} {
+	for _, path := range []string{"/admin/users", "/admin/users/create"} {
 		if code, _, _ := b.get(path); code != 403 {
 			t.Fatalf("reviewer accessed %s: %d", path, code)
 		}
 	}
-	for _, path := range []string{"/admin/settings", "/admin/settings/identity", "/admin/settings/legal", "/admin/members", "/admin/roles", "/admin/roles/create", "/admin/meetings", "/admin/meetings/create", "/admin/modules", "/admin/programs", "/admin/regulations", "/admin/audit"} {
+	for _, path := range []string{"/admin/settings", "/admin/settings/identity", "/admin/settings/legal", "/admin/roles", "/admin/roles/create", "/admin/meetings", "/admin/meetings/create", "/admin/modules", "/admin/programs", "/admin/regulations", "/admin/audit"} {
 		if code, _, _ := b.get(path); code != 200 {
 			t.Fatalf("editor content access denied %s: %d", path, code)
 		}

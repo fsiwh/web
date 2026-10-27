@@ -5,14 +5,10 @@ import (
 	"strconv"
 )
 
-type AdminMemberRow struct {
-	Member
-	Roles []string
-}
-
 type AdminRoleRow struct {
 	Title, Kind, URL string
 	Members          []string
+	MemberLinks      []Link
 }
 
 func MemberRoleKind(group string) string {
@@ -29,7 +25,6 @@ type AdminLink struct{ ID, Label, URL, Group string }
 
 var AdminLinks = []AdminLink{
 	{"settings", "Stammdaten", "/admin/settings", "Organisation"},
-	{"members", "Mitglieder", "/admin/members", "Organisation"},
 	{"roles", "Funktionen", "/admin/roles", "Organisation"},
 	{"meetings", "Sitzungen", "/admin/meetings", "Organisation"},
 	{"modules", "Module", "/admin/modules", "Vorgänge"},
@@ -43,14 +38,20 @@ var AdminLinks = []AdminLink{
 type AdminPage struct {
 	OrganizationSettings                                         []OrganizationSettingsTask
 	CanResendConfirmation                                        bool
+	InvitationPending                                            bool
+	Assignments                                                  []string
 	Member                                                       *Member
 	Inviting                                                     bool
+	InviteStep                                                   string
+	InviteContext                                                string
+	HiddenFields                                                 []AdminField
+	SubmitLabel                                                  string
+	InviteAssignments                                            []AdminOption
 	ReviewerOnly                                                 bool
 	ReadOnly                                                     bool
 	Submissions                                                  []Submission
 	Section, SectionTitle, View, Action, Query, Message, Success string
 	Fields                                                       []AdminField
-	Members                                                      []AdminMemberRow
 	Roles                                                        []AdminRoleRow
 	Users                                                        []User
 	Modules                                                      []AdminModule

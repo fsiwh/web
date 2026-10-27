@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"strings"
 
 	"github.com/fachschaftinformatik/web/internal/database"
 	"github.com/fachschaftinformatik/web/internal/publicid"
@@ -17,6 +18,7 @@ func CreateUserTx(ctx context.Context, tx *sql.Tx, params database.CreateUserPar
 		return database.User{}, err
 	}
 	params.ID = userID
+	params.Email = strings.ToLower(strings.TrimSpace(params.Email))
 	user, err := database.New(tx).CreateUser(ctx, params)
 	if err != nil {
 		return database.User{}, err

@@ -20,7 +20,7 @@ func TestResendAccountConfirmationAndMemberInvitation(t *testing.T) {
 		(44,'member@studmail.w-hs.de','Member','unchanged','editor',1,0)`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`UPDATE people SET user_id=44 WHERE id='1'`); err != nil {
+	if _, err := db.Exec(`UPDATE users SET invitation_pending=1 WHERE id=44`); err != nil {
 		t.Fatal(err)
 	}
 	seedPublicRefs(t, db)
