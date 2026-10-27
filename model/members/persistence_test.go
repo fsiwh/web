@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/url"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/fachschaftinformatik/web/internal/database"
@@ -26,14 +25,14 @@ func membershipStore(t *testing.T) (*Store, *users.Service, *sql.DB) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	if _, err := db.Exec(`INSERT INTO people(id,name,email,position) VALUES('1','Example Chair','chair@example.org',0); INSERT INTO responsibilities(id,group_name,title,email,position) VALUES('1','board','Vorsitz','chair@example.org',0);INSERT INTO responsibility_members(responsibility_id,person_id,position)VALUES('1','1',0)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO functions(id,group_name,title,email,position) VALUES('finance','board','Finanzen','finance@example.org',0),('sport','departments','Sport','',1)`); err != nil {
 		t.Fatal(err)
 	}
-	store, err := Open(context.Background(), db)
+	s, err := Open(context.Background(), db)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return store, users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}), db
+	return s, users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"fsv-wh.de", "studmail.w-hs.de"}}), db
 }
 
 func inviteToken(t *testing.T, db *sql.DB) string {
@@ -43,215 +42,117 @@ func inviteToken(t *testing.T, db *sql.DB) string {
 		t.Fatal(err)
 	}
 	u, err := url.Parse(link)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if u.Path != "/invitation/accept" {
-		t.Fatal("invitation does not lead to registration completion")
+	if err != nil || u.Path != "/invitation/accept" {
+		t.Fatal("incorrect invitation link", link, err)
 	}
 	return u.Query().Get("token")
 }
 
-func TestPersistentInvitationConfirmationAndAssignments(t *testing.T) {
-	store, identity, db := membershipStore(t)
+func TestAccountInvitationWithMultipleFunctions(t *testing.T) {
+	s, identity, db := membershipStore(t)
 	ctx := context.Background()
-	initial := len(store.Members())
-	if fields, err := store.Invite(ctx, identity, "Neue Person", "NEW@STUDMAIL.W-HS.DE"); err != nil || len(fields) != 0 {
-		t.Fatalf("invite: %v %v", fields, err)
+	ids := []string{s.Roles("board")[0].PublicID, s.Roles("departments")[0].PublicID}
+	if fields, err := s.InviteAccount(ctx, identity, "Alex Example", "ALEX@FSV-WH.DE", "editor", ids); err != nil || len(fields) > 0 {
+		t.Fatal(fields, err)
 	}
-	members := store.Members()
-	member := members[len(members)-1]
-	if member.UserID == 0 || member.Confirmed || member.AccountEmail != "new@studmail.w-hs.de" || member.Email != "" {
-		t.Fatalf("invited member: %+v", member)
+	u := s.Members()[0]
+	if u.UserID == 0 || u.Confirmed || u.AccountEmail != "alex@fsv-wh.de" || u.Email != "" {
+		t.Fatal(u)
 	}
-	token := inviteToken(t, db)
-	if fields, err := store.Invite(ctx, identity, "Duplicate Person", "new@studmail.w-hs.de"); err != nil || fields["email"] == "" {
-		t.Fatal("duplicate membership accepted")
+	var count int
+	if err := db.QueryRow(`SELECT count(*) FROM user_functions WHERE user_id=?`, u.UserID).Scan(&count); err != nil || count != 2 {
+		t.Fatal(count, err)
 	}
-	if _, err := identity.Invitation(ctx, token); err != nil {
-		t.Fatal("duplicate invite invalidated existing link")
+	previous := inviteToken(t, db)
+	if queued, err := s.Resend(ctx, identity, u.ID); err != nil || !queued {
+		t.Fatal(queued, err)
 	}
-	previous := token
-	if queued, err := store.Resend(ctx, identity, member.ID); err != nil || !queued {
-		t.Fatal("resending invitation failed")
-	}
-	token = inviteToken(t, db)
-	if previous == token {
-		t.Fatal("resend reused the invitation token")
+	current := inviteToken(t, db)
+	if current == previous {
+		t.Fatal("resend did not rotate token")
 	}
 	if _, err := identity.Invitation(ctx, previous); !errors.Is(err, users.ErrToken) {
-		t.Fatal("resend left old invitation usable")
+		t.Fatal("old token still usable", err)
 	}
-	if fields := store.SaveRole(MemberRole{ID: "create", Group: "project", Title: "Neue Aufgabe", MemberIDs: []string{member.ID}}); len(fields) != 0 {
-		t.Fatal(fields)
+	if err := identity.ConsumeToken(ctx, current, "verify", ""); !errors.Is(err, users.ErrToken) {
+		t.Fatal("invitation bypassed password setup", err)
 	}
-	public := false
-	for _, group := range store.Groups() {
-		for _, section := range group.Sections {
-			for _, p := range section.Members {
-				if p.Name == member.Name {
-					public = true
-					if p.Email != "" {
-						t.Fatal("private account email appeared publicly")
-					}
-				}
-			}
-		}
+	if err := identity.AcceptInvitation(ctx, current, "existing password"); err != nil {
+		t.Fatal(err)
 	}
-	if !public {
-		t.Fatal("account confirmation hid a public member assignment")
+	if err := identity.AcceptInvitation(ctx, current, "another password"); !errors.Is(err, users.ErrToken) {
+		t.Fatal("token reused", err)
+	}
+	if id, err := identity.Login(ctx, "alex@fsv-wh.de", "existing password"); err != nil || id != u.UserID {
+		t.Fatal(id, err)
 	}
 	restarted, err := Open(ctx, db)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(restarted.Members()) != initial+1 {
-		t.Fatal("restart lost invitations or reseeded profiles")
+	if len(restarted.Members()) != 1 || len(restarted.Roles("board")[0].MemberIDs) != 1 {
+		t.Fatal("restart lost identity or assignments")
 	}
-	if err := identity.ConsumeToken(ctx, token, "verify", ""); !errors.Is(err, users.ErrToken) {
-		t.Fatal("invitation bypassed password setup")
-	}
-	if err := identity.AcceptInvitation(ctx, token, "eight 🔐🔐🔐"); err != nil {
-		t.Fatal(err)
-	}
-	if err := identity.AcceptInvitation(ctx, token, "another password"); !errors.Is(err, users.ErrToken) {
-		t.Fatal("invitation link reused")
-	}
-	userID, err := identity.Login(ctx, "new@studmail.w-hs.de", "eight 🔐🔐🔐")
-	if err != nil || userID != member.UserID {
-		t.Fatal("confirmed invitation cannot log in")
-	}
-	session, err := identity.CreateSession(ctx, userID)
-	if err != nil || !session.CanReview() || session.CanAdmin() {
-		t.Fatal("invitation role policy incorrect")
-	}
-	if err := restarted.Refresh(ctx); err != nil {
-		t.Fatal(err)
-	}
-	confirmed := false
-	for _, p := range restarted.Members() {
-		if p.ID == member.ID {
-			confirmed = p.Confirmed
-		}
-	}
-	if !confirmed {
-		t.Fatal("confirmation not visible in membership administration")
-	}
-	found := false
-	for _, group := range restarted.Groups() {
-		for _, section := range group.Sections {
+	for _, g := range restarted.Groups() {
+		for _, section := range g.Sections {
 			for _, p := range section.Members {
-				if p.Name == member.Name {
-					found = true
-					if p.Email != "" {
-						t.Fatal("private invitation address published")
-					}
+				if p.Email == u.AccountEmail {
+					t.Fatal("login email published")
 				}
 			}
 		}
 	}
-	if !found {
-		t.Fatal("confirmed role assignment not published or persisted")
-	}
 }
 
-func TestExistingConfirmedAccountAndFailedInvitationArePreserved(t *testing.T) {
-	store, identity, db := membershipStore(t)
+func TestAdminInvitationAndExistingCredentials(t *testing.T) {
+	s, identity, db := membershipStore(t)
 	ctx := context.Background()
-	hash, err := users.HashPassword("existing password")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (42,'existing@fsv-wh.de','Existing',?,'admin',1,1)`, hash); err != nil {
-		t.Fatal(err)
-	}
-	if fields, err := store.Invite(ctx, identity, "Existing Profile", "existing@fsv-wh.de"); err != nil || len(fields) != 0 {
+	if fields, err := s.InviteAccount(ctx, identity, "Robin Example", "robin@fsv-wh.de", "admin", nil); err != nil || len(fields) > 0 {
 		t.Fatal(fields, err)
 	}
-	var role, password string
-	if err := db.QueryRow(`SELECT role,password FROM users WHERE id=42`).Scan(&role, &password); err != nil || role != "admin" || password != hash {
-		t.Fatal("inviting a confirmed account changed credentials or downgraded role")
+	if err := identity.AcceptInvitation(ctx, inviteToken(t, db), "existing password"); err != nil {
+		t.Fatal(err)
+	}
+	u := s.Members()[0]
+	if session, err := identity.CreateSession(ctx, u.UserID); err != nil || !session.CanAdmin() {
+		t.Fatal(session, err)
+	}
+	var hash string
+	if err := db.QueryRow(`SELECT password FROM users WHERE id=?`, u.UserID).Scan(&hash); err != nil {
+		t.Fatal(err)
+	}
+	if fields, err := s.InviteAccount(ctx, identity, "Ignored Name", "robin@fsv-wh.de", "editor", []string{s.Roles("board")[0].PublicID}); err != nil || len(fields) > 0 {
+		t.Fatal(fields, err)
+	}
+	var role, password, name string
+	if err := db.QueryRow(`SELECT role,password,name FROM users WHERE id=?`, u.UserID).Scan(&role, &password, &name); err != nil || role != "admin" || password != hash || name != "Robin Example" {
+		t.Fatal("existing identity changed", role, name, err)
 	}
 	var count int
 	if err := db.QueryRow(`SELECT count(*) FROM mail_outbox`).Scan(&count); err != nil || count != 0 {
-		t.Fatal("confirmed account received password-setup invitation")
-	}
-	if _, err := db.Exec(`CREATE TRIGGER fail_person BEFORE INSERT ON people BEGIN SELECT RAISE(FAIL,'forced membership failure'); END`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := store.Invite(ctx, identity, "Failed Profile", "failed@studmail.w-hs.de"); err == nil {
-		t.Fatal("failed membership insertion reported success")
-	}
-	if err := db.QueryRow(`SELECT count(*) FROM users WHERE email='failed@studmail.w-hs.de'`).Scan(&count); err != nil || count != 0 {
-		t.Fatal("failed invitation left a user account")
-	}
-	if err := db.QueryRow(`SELECT count(*) FROM mail_outbox`).Scan(&count); err != nil || count != 0 {
-		t.Fatal("failed invitation queued mail")
+		t.Fatal("confirmed account got setup mail", err)
 	}
 }
 
-func TestLinkExistingMemberAndUseAccountIdentity(t *testing.T) {
-	store, identity, db := membershipStore(t)
+func TestInvitationValidationAndAtomicity(t *testing.T) {
+	s, identity, db := membershipStore(t)
 	ctx := context.Background()
-	members := store.Members()
-	member := members[0]
-	if member.UserID != 0 {
-		t.Fatal("unlinked profile claims a confirmed account")
-	}
-	before := store.Roles("board")
-	fields, err := store.InviteMember(ctx, identity, member.ID, "Linked Person", "linked@studmail.w-hs.de")
-	if err != nil || len(fields) != 0 {
-		t.Fatal(fields, err)
-	}
-	if len(store.Members()) != len(members) {
-		t.Fatal("linking duplicated the membership")
-	}
-	linked := store.Members()[0]
-	if linked.ID != member.ID || linked.UserID == 0 || linked.Name != "Linked Person" || linked.Email != member.Email || linked.Confirmed {
-		t.Fatalf("incorrect linkage: %+v", linked)
-	}
-	after := store.Roles("board")
-	if len(before) != len(after) {
-		t.Fatal("linking changed functions")
-	}
-	for i := range before {
-		if strings.Join(before[i].MemberIDs, ",") != strings.Join(after[i].MemberIDs, ",") {
-			t.Fatal("linking lost function assignments")
+	for _, ids := range [][]string{nil, {"AAAAAAAAAAA"}} {
+		if fields, err := s.InviteAccount(ctx, identity, "Alex Example", "alex@fsv-wh.de", "editor", ids); err != nil || fields["functions"] == "" {
+			t.Fatal(fields, err)
 		}
 	}
-	if _, err := db.Exec(`UPDATE users SET name='Account Name' WHERE id=?`, linked.UserID); err != nil {
+	if _, err := db.Exec(`CREATE TRIGGER fail_assignment BEFORE INSERT ON user_functions BEGIN SELECT RAISE(FAIL,'forced assignment failure'); END`); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Refresh(ctx); err != nil {
-		t.Fatal(err)
+	if _, err := s.InviteAccount(ctx, identity, "Alex Example", "alex@fsv-wh.de", "editor", []string{s.Roles("board")[0].PublicID}); err == nil {
+		t.Fatal("assignment failure ignored")
 	}
-	linked = store.Members()[0]
-	if linked.Name != "Account Name" {
-		t.Fatal("member name does not come from its account")
+	var count int
+	if err := db.QueryRow(`SELECT count(*) FROM users`).Scan(&count); err != nil || count != 0 {
+		t.Fatal("failed invitation left account", err)
 	}
-	invitation, err := identity.Invitation(ctx, inviteToken(t, db))
-	if err != nil || invitation.Name != "Account Name" {
-		t.Fatal("invitation uses a stale profile name")
-	}
-	linked.Name = "Edited Name"
-	if fields := store.SaveMember(linked); len(fields) != 0 {
-		t.Fatal(fields)
-	}
-	var name string
-	if err := db.QueryRow(`SELECT name FROM users WHERE id=?`, linked.UserID).Scan(&name); err != nil || name != "Edited Name" {
-		t.Fatal("member edit did not update account identity")
-	}
-	if _, err := db.Exec(`CREATE TRIGGER fail_profile BEFORE UPDATE ON people BEGIN SELECT RAISE(FAIL,'forced profile failure'); END`); err != nil {
-		t.Fatal(err)
-	}
-	linked.Name = "Failed Name"
-	if fields := store.SaveMember(linked); len(fields) == 0 {
-		t.Fatal("failed profile update reported success")
-	}
-	if err := db.QueryRow(`SELECT name FROM users WHERE id=?`, linked.UserID).Scan(&name); err != nil || name != "Edited Name" {
-		t.Fatal("failed profile update changed account identity")
-	}
-	if store.Members()[0].Name != "Edited Name" {
-		t.Fatal("failed profile update changed displayed identity")
+	if err := db.QueryRow(`SELECT count(*) FROM mail_outbox`).Scan(&count); err != nil || count != 0 {
+		t.Fatal("failed invitation left mail", err)
 	}
 }

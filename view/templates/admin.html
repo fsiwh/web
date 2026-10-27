@@ -60,23 +60,6 @@
           <div class="app-community-card">
             <img
               class="app-community-card__image"
-              src="/assets/community/catchup-groupshot.png"
-              alt=""
-              width="320"
-              height="180"
-              loading="lazy"
-            />
-            <h3 class="govuk-heading-m">Mitglieder</h3>
-            <p class="govuk-body">
-              Bearbeite öffentliche Teamprofile und sieh, welche Funktionen sie übernehmen.
-            </p>
-            <p class="govuk-body">
-              <a class="govuk-link" href="/admin/members">Zu den Mitgliedern</a>
-            </p>
-          </div>
-          <div class="app-community-card">
-            <img
-              class="app-community-card__image"
               src="/assets/community/workshop.png"
               alt=""
               width="320"
@@ -289,6 +272,7 @@
     {{ end }}
 
     {{ if eq .View "users" }}
+      <a class="govuk-button" data-module="govuk-button" href="/admin/users/create">Benutzerkonto einladen</a>
       <form action="/admin/users" method="get" class="govuk-!-margin-bottom-6">
         <div class="govuk-form-group govuk-!-margin-bottom-3">
           <label class="govuk-label" for="user-search">Name oder E-Mail-Adresse</label
@@ -597,8 +581,12 @@
         </dl>
         {{ with $.Admin.Member }}
           <p class="govuk-body">
-            <a class="govuk-link" href="{{ .EditURL }}">Mitglied bearbeiten</a>
+            <a class="govuk-link" href="{{ .UserURL }}/edit">Benutzerkonto bearbeiten</a>
           </p>
+        {{ end }}
+        {{ if $.Admin.Assignments }}
+          <h2 class="govuk-heading-m">Funktionen</h2>
+          <ul class="govuk-list govuk-list--bullet">{{ range $.Admin.Assignments }}<li>{{ . }}</li>{{ end }}</ul>
         {{ end }}
         <div class="govuk-button-group">
           <a
@@ -615,7 +603,7 @@
               type="submit"
               form="confirmation-form"
             >
-              {{ if $.Admin.Member }}
+              {{ if $.Admin.InvitationPending }}
                 Einladung erneut senden
               {{ else }}
                 Bestätigung erneut senden
@@ -644,72 +632,6 @@
 
     {{ if eq .View "reset" }}{{ template "password-reset-form" $ }}{{ end }}
 
-    {{ if eq .View "members" }}
-      {{ if not .ReviewerOnly }}
-      <div class="govuk-button-group">
-        <a class="govuk-button" data-module="govuk-button" href="/admin/members/create"
-          >Mitglied hinzufügen</a
-        >
-      </div>
-      {{ end }}
-      <section aria-labelledby="members-heading">
-        <h2 class="govuk-heading-m" id="members-heading">Mitglieder</h2>
-        <table class="govuk-table app-admin-table app-exams-upload-table" role="table">
-          <caption class="govuk-visually-hidden">
-            Mitglieder und ihre Funktionen
-          </caption>
-          <thead class="govuk-table__head" role="rowgroup">
-            <tr class="govuk-table__row" role="row">
-              <th class="govuk-table__header" scope="col" role="columnheader">Name</th>
-              <th class="govuk-table__header" scope="col" role="columnheader">Funktionen</th>
-              {{ if not .ReviewerOnly }}<th class="govuk-table__header" scope="col" role="columnheader">Status</th>{{ end }}
-            </tr>
-          </thead>
-          <tbody class="govuk-table__body" role="rowgroup">
-            {{ range .Members }}
-              <tr class="govuk-table__row" role="row">
-                <th class="govuk-table__header" scope="row" role="rowheader">
-                  <a class="govuk-link" href="{{ .EditURL }}"
-                    >{{ .Name }}<span class="govuk-visually-hidden"> bearbeiten</span></a
-                  >{{ if .AccountEmail }}
-                    <p
-                      class="govuk-body-s govuk-!-margin-top-2 govuk-!-margin-bottom-0 app-wrap-anywhere"
-                    >
-                      <a class="govuk-link" href="{{ .UserURL }}">{{ .AccountEmail }}</a>
-                    </p>
-                  {{ end }}
-                </th>
-                <td class="govuk-table__cell" role="cell">
-                  <span class="app-exams-upload-label" aria-hidden="true">Funktionen</span>
-                  <div>
-                    {{ if .Roles }}
-                      <ul class="govuk-list govuk-!-margin-bottom-0">
-                        {{ range .Roles }}<li>{{ . }}</li>{{ end }}
-                      </ul>
-                    {{ else }}
-                      Keine Funktionen zugeordnet
-                    {{ end }}
-                  </div>
-                </td>
-                {{ if not $.Admin.ReviewerOnly }}<td class="govuk-table__cell" role="cell">
-                  <span class="app-exams-upload-label" aria-hidden="true">Status</span
-                  ><strong
-                    class="govuk-tag {{ if not .UserID }}
-                      govuk-tag--grey
-                    {{ else if .Confirmed }}
-                      govuk-tag--green
-                    {{ else }}
-                      govuk-tag--blue
-                    {{ end }}"
-                    >{{ .Status }}</strong
-                  >
-                </td>{{ end }}
-              </tr>
-            {{ end }}
-          </tbody>
-        </table>
-      </section>
-    {{ end }}
     {{ if eq .View "roles" }}
       <a class="govuk-button" data-module="govuk-button" href="/admin/roles/create"
         >Funktion hinzufügen</a
@@ -744,7 +666,7 @@
                 <td class="govuk-table__cell">
                   {{ if .Members }}
                     <ul class="govuk-list govuk-!-margin-bottom-0">
-                      {{ range .Members }}<li>{{ . }}</li>{{ end }}
+                      {{ range .MemberLinks }}<li><a class="govuk-link" href="{{ .URL }}">{{ .Title }}</a></li>{{ end }}
                     </ul>
                   {{ else }}
                     Keine Mitglieder zugeordnet
@@ -832,6 +754,24 @@
         tabindex="-1"
       >
         <input type="hidden" name="csrf" value="{{ $csrf }}" />
+        {{ range .HiddenFields }}<input type="hidden" name="{{ .ID }}" value="{{ .Value }}" />{{ end }}
+        {{ if .InviteContext }}<p class="govuk-body">{{ .InviteContext }}</p>{{ end }}
+        {{ if eq .InviteStep "assignments" }}
+          <dl class="govuk-summary-list">
+            {{ range .InviteAssignments }}
+              <div class="govuk-summary-list__row">
+                <dt class="govuk-summary-list__key">Funktion</dt>
+                <dd class="govuk-summary-list__value">{{ .Label }}</dd>
+                <dd class="govuk-summary-list__actions">
+                  <button class="govuk-link app-link-button" type="submit" name="remove" value="{{ .Value }}">
+                    Entfernen<span class="govuk-visually-hidden">: {{ .Label }}</span>
+                  </button>
+                </dd>
+              </div>
+            {{ end }}
+          </dl>
+          <button class="govuk-button govuk-button--secondary" data-module="govuk-button" type="submit" name="add" value="true">Weitere Funktionen hinzufügen</button>
+        {{ end }}
         {{ range .Fields }}
           <div class="govuk-form-group {{ if .Error }}govuk-form-group--error{{ end }}">
             {{ if or (eq .Kind "checkboxes") (eq .Kind "radios") (eq .Kind "date") }}
@@ -912,7 +852,7 @@
                     class="{{ if eq .Kind "radios" }}
                       govuk-radios
                     {{ else }}
-                      govuk-checkboxes govuk-checkboxes--small
+                      govuk-checkboxes{{ if not $.Admin.Inviting }} govuk-checkboxes--small{{ end }}
                     {{ end }}"
                     data-module="{{ if eq .Kind "radios" }}
                       govuk-radios
@@ -1084,6 +1024,8 @@
           <button class="govuk-button" data-module="govuk-button" type="submit">
             {{ if .Publication }}
               Weiter zur Prüfung
+            {{ else if .SubmitLabel }}
+              {{ .SubmitLabel }}
             {{ else if .Inviting }}
               Einladung senden
             {{ else }}

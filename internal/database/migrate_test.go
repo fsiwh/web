@@ -38,7 +38,7 @@ INSERT INTO web_sessions(id,user_id,expires_at) VALUES('session',42,'2030-01-01T
 	}
 	read := func() []any {
 		t.Helper()
-		rows, err := db.Query("SELECT * FROM users WHERE id=42")
+		rows, err := db.Query("SELECT id,email,name,password,role,active,verified,verified_at,verification_token,program_id,theme,private,avatar_url,created_at,deleted_at,password_reset_token,password_reset_expires FROM users WHERE id=42")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,8 +67,8 @@ INSERT INTO web_sessions(id,user_id,expires_at) VALUES('session',42,'2030-01-01T
 	if _, err = db.Exec(`PRAGMA foreign_keys=ON; INSERT INTO users(email,name,password)VALUES('person@new.example.org','New','hash')`); err != nil {
 		t.Fatal("old domain constraint remains", err)
 	}
-	if _, err = db.Exec("DELETE FROM users WHERE id=42"); err == nil {
-		t.Fatal("existing foreign-key restriction was lost")
+	if _, err = db.Exec("INSERT INTO user_functions(user_id,function_id) VALUES(999,'missing')"); err == nil {
+		t.Fatal("foreign-key enforcement was lost")
 	}
 	var count int
 	if err = db.QueryRow("SELECT count(*) FROM web_sessions WHERE user_id=42").Scan(&count); err != nil || count != 1 {

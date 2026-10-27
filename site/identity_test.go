@@ -81,7 +81,7 @@ func persistentServices(t *testing.T, db *sql.DB, storage exams.Storage) Service
 		}
 		publicRef(t, db, "historical_documents", file)
 	}
-	if _, err = db.Exec(`INSERT OR IGNORE INTO people(id,name,email,position) VALUES('1','Example Chair','chair@example.org',0); INSERT OR IGNORE INTO responsibilities(id,group_name,title,email,position) VALUES('1','board','Vorsitz','chair@example.org',0),('6','departments','Öffentlichkeit','public@example.org',1); INSERT OR IGNORE INTO responsibility_members(responsibility_id,person_id,position) VALUES('1','1',0)`); err != nil {
+	if _, err = db.Exec(`INSERT OR IGNORE INTO users(id,name,email,password,public_email,role) VALUES(800,'Example Chair','chair@example.org','!','chair@example.org','editor'); INSERT OR IGNORE INTO functions(id,group_name,title,email,position) VALUES('1','board','Vorsitz','chair@example.org',0),('6','departments','Öffentlichkeit','public@example.org',1); INSERT OR IGNORE INTO user_functions(function_id,user_id,position) VALUES('1',800,0)`); err != nil {
 		t.Fatal(err)
 	}
 	seedPublicRefs(t, db)
@@ -118,7 +118,7 @@ func TestPersistentLoginAuthorizationAndLogout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'PERSON@fsv-wh.de','Person',?,'user',1,1)`, string(hash)); err != nil {
+	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'person@fsv-wh.de','Person',?,'user',1,1)`, string(hash)); err != nil {
 		t.Fatal(err)
 	}
 	seedPublicRefs(t, db)

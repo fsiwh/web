@@ -11,7 +11,7 @@ import (
 	"github.com/fachschaftinformatik/web/internal/publicid"
 )
 
-// User is a login identity, independent of a public person profile.
+// User is the account directory projection of a login identity.
 type User struct {
 	ID                int64
 	Name, Email, Role string
@@ -20,6 +20,7 @@ type User struct {
 	Degree            string
 	Active            bool
 	Verified          bool
+	InvitationPending bool
 }
 
 // Directory is an immutable account display snapshot. It contains neither
