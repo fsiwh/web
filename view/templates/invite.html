@@ -30,6 +30,14 @@
     <form action="/invitation/accept" method="post" novalidate>
       <input type="hidden" name="csrf" value="{{ .CSRF }}" />
       <input type="hidden" name="token" value="{{ .Invite.Value }}" />
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="invite-name">Name</label>
+        <input class="govuk-input" id="invite-name" value="{{ .Invite.Name }}" disabled />
+      </div>
+      <div class="govuk-form-group">
+        <label class="govuk-label" for="invite-email">E-Mail-Adresse</label>
+        <input class="govuk-input" id="invite-email" type="email" value="{{ .Invite.Email }}" disabled />
+      </div>
       <div class="govuk-form-group {{ if .Invite.PasswordError }}govuk-form-group--error{{ end }}">
         <label class="govuk-label" for="password">Passwort festlegen</label>
         <div class="govuk-hint" id="password-hint">Verwende mindestens 8 Zeichen.</div>

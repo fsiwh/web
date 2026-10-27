@@ -19,12 +19,12 @@ func TestEditorContentAccessDoesNotGrantAccountAdministration(t *testing.T) {
 	defer server.Close()
 	b := newAdminBrowser(t, server)
 	b.login()
-	if _, err := db.Exec(`UPDATE users SET role='editor' WHERE id=900; UPDATE people SET user_id=42 WHERE id='1'`); err != nil {
+	if _, err := db.Exec(`UPDATE users SET role='editor' WHERE id=900; UPDATE user_functions SET user_id=42 WHERE function_id='1'`); err != nil {
 		t.Fatal(err)
 	}
-	member := publicRef(t, db, "members", "1")
+	member := publicRef(t, db, "users", "42")
 	user := publicRef(t, db, "users", "42")
-	for _, path := range []string{"/admin", "/admin/members", "/admin/members/" + member + "/edit"} {
+	for _, path := range []string{"/admin", "/admin/roles", "/admin/team/" + member + "/edit"} {
 		status, body, _ := b.get(path)
 		if status != 200 {
 			t.Fatal("editor content page denied", path, status)
@@ -33,13 +33,13 @@ func TestEditorContentAccessDoesNotGrantAccountAdministration(t *testing.T) {
 			t.Fatal("account controls leaked", path)
 		}
 	}
-	if status, _, _ := b.post("/admin/members/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {"Public Team Name"}, "email": {"attacker@example.org"}, "UserID": {"900"}, "role": {"admin"}}); status != 303 {
+	if status, _, _ := b.post("/admin/team/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {"Public Team Name"}, "email": {"attacker@example.org"}, "UserID": {"900"}, "role": {"admin"}}); status != 303 {
 		t.Fatal("public profile save failed", status)
 	}
 	var accountName, accountEmail, role string
 	var linked int
 	db.QueryRow("SELECT name,email FROM users WHERE id=42").Scan(&accountName, &accountEmail)
-	db.QueryRow("SELECT user_id FROM people WHERE id='1'").Scan(&linked)
+	db.QueryRow("SELECT user_id FROM user_functions WHERE function_id='1'").Scan(&linked)
 	db.QueryRow("SELECT role FROM users WHERE id=900").Scan(&role)
 	if accountName == "Public Team Name" || accountEmail == "attacker@example.org" || linked != 42 || role != "editor" {
 		t.Fatal("public profile changed account")
@@ -47,12 +47,12 @@ func TestEditorContentAccessDoesNotGrantAccountAdministration(t *testing.T) {
 	if status, body, _ := b.get("/team"); status != 200 || !strings.Contains(body, "Public Team Name") {
 		t.Fatal("public name not persisted")
 	}
-	for _, path := range []string{"/admin/users", "/admin/users/" + user, "/admin/users/" + user + "/reset", "/admin/members/create"} {
+	for _, path := range []string{"/admin/users", "/admin/users/" + user, "/admin/users/" + user + "/reset", "/admin/users/create"} {
 		if status, _, _ := b.get(path); status != 403 {
 			t.Fatal("editor account access", path, status)
 		}
 	}
-	for _, path := range []string{"/admin/members/create", "/admin/members/" + member + "/invite", "/admin/users/" + user + "/confirm", "/admin/users/" + user + "/reset"} {
+	for _, path := range []string{"/admin/users/create", "/admin/users/" + user + "/edit", "/admin/users/" + user + "/confirm", "/admin/users/" + user + "/reset"} {
 		if status, _, _ := b.post(path, url.Values{"csrf": {b.csrf}}); status != 403 {
 			t.Fatal("editor account mutation", path, status)
 		}

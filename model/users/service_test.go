@@ -36,7 +36,7 @@ func TestExistingCredentialsAndPersistentSessionPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'EXISTING@fsv-wh.de','Existing',?,'admin',1,1)`, string(hash)); err != nil {
+	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'existing@fsv-wh.de','Existing',?,'admin',1,1)`, string(hash)); err != nil {
 		t.Fatal(err)
 	}
 	id, err := s.Login(ctx, "existing@fsv-wh.de", "existing password")

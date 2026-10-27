@@ -48,12 +48,15 @@ type Member struct {
 	UserPublicID    string
 	AccountEmail    string
 	Confirmed       bool
+	AccessRole      string
 }
 
 type MemberRole struct {
 	ID, Group, Title, Email string
 	PublicID                string
 	MemberIDs               []string
+	OrganizationID          int64
+	Organization            string
 }
 
 // Store shares public profiles and assignments between public and admin views.
@@ -68,6 +71,25 @@ func (s *Store) Members() []Member {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return slices.Clone(s.members)
+}
+
+func (s *Store) AssignableMembers() []Member {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var result []Member
+	for _, u := range s.members {
+		assigned := u.AccessRole == "editor" || u.AccessRole == "admin"
+		for _, f := range s.roles {
+			if slices.Contains(f.MemberIDs, u.ID) {
+				assigned = true
+				break
+			}
+		}
+		if assigned {
+			result = append(result, u)
+		}
+	}
+	return result
 }
 
 func (s *Store) Roles(group string) []MemberRole {
@@ -106,15 +128,7 @@ func (s *Store) SaveMember(p Member) map[string]string {
 		return errors
 	}
 	if p.ID == "create" {
-		p.ID = publicid.New()
-		p.PublicID = p.ID
-		s.members = append(s.members, p)
-		if err := s.persist(); err != nil {
-			s.members = s.members[:len(s.members)-1]
-			log.Printf("Save member: %v", err)
-			return map[string]string{"name": "Das Mitglied konnte nicht gespeichert werden."}
-		}
-		return nil
+		return map[string]string{"name": "Lade ein Benutzerkonto ein."}
 	}
 	for i := range s.members {
 		if s.members[i].ID == p.ID {
@@ -130,13 +144,7 @@ func (s *Store) SaveMember(p Member) map[string]string {
 				s.members[i] = p
 				return nil
 			}
-			s.members[i] = p
-			if err := s.persist(); err != nil {
-				s.members[i] = old
-				log.Printf("Save member: %v", err)
-				return map[string]string{"name": "Das Mitglied konnte nicht gespeichert werden."}
-			}
-			return nil
+			return map[string]string{"name": "Das Benutzerkonto wurde nicht gefunden."}
 		}
 	}
 	return map[string]string{"name": "Dieses Mitglied wurde nicht gefunden."}
@@ -155,6 +163,13 @@ func (s *Store) SaveRole(r MemberRole) map[string]string {
 	}
 	if r.Group != "board" && r.Group != "departments" && r.Group != "project" {
 		errors["group"] = "Wähle Vorstand, Referat oder Projektstelle aus."
+	}
+	if r.OrganizationID == 0 {
+		r.OrganizationID = 1
+	}
+	var organizationExists bool
+	if err := s.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM organizations WHERE id=?)`, r.OrganizationID).Scan(&organizationExists); err != nil || !organizationExists {
+		errors["organization"] = "Wähle eine vorhandene Organisation aus."
 	}
 	for _, id := range r.MemberIDs {
 		if !slices.ContainsFunc(s.members, func(p Member) bool { return p.ID == id }) {
@@ -203,7 +218,7 @@ func (s *Store) Groups() []Group {
 	groups := []Group{{ID: "board", Title: "Vorstand"}, {ID: "departments", Title: "Referate"}, {ID: "project", Title: "Projektstellen"}}
 	for i := range groups {
 		for _, r := range s.roles {
-			if r.Group != groups[i].ID {
+			if r.Group != groups[i].ID || r.OrganizationID != 1 {
 				continue
 			}
 			section := TeamSection{Title: r.Title}
@@ -235,8 +250,44 @@ func (s *Store) persist() error {
 		return err
 	}
 	defer tx.Rollback()
-	if err := writeState(ctx, tx, s.members, s.roles); err != nil {
-		return err
+	for position, r := range s.roles {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO functions(id,group_name,title,email,position,organization_id) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET group_name=excluded.group_name,title=excluded.title,email=excluded.email,position=excluded.position,organization_id=excluded.organization_id`, r.ID, r.Group, r.Title, r.Email, position, r.OrganizationID); err != nil {
+			return err
+		}
+		value, err := publicid.Ensure(ctx, tx, "roles", r.ID)
+		if err != nil {
+			return err
+		}
+		s.roles[position].PublicID = value
+		rows, err := tx.QueryContext(ctx, `SELECT CAST(user_id AS TEXT) FROM user_functions WHERE function_id=? ORDER BY position,user_id`, r.ID)
+		if err != nil {
+			return err
+		}
+		var current []string
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				return err
+			}
+			current = append(current, id)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+		if slices.Equal(current, r.MemberIDs) {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM user_functions WHERE function_id=?`, r.ID); err != nil {
+			return err
+		}
+		for position, id := range r.MemberIDs {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO user_functions(user_id,function_id,position) VALUES(?,?,?)`, id, r.ID, position); err != nil {
+				return err
+			}
+		}
 	}
 	return tx.Commit()
 }

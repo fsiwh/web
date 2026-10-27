@@ -11,112 +11,129 @@ import (
 	"github.com/fachschaftinformatik/web/model/users"
 )
 
-func TestMemberInvitationRegistrationJourney(t *testing.T) {
-	b, db := identityBrowser(t)
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (42,'admin@fsv-wh.de','Admin','unused','admin',1,1)`); err != nil {
-		t.Fatal(err)
-	}
-	seedPublicRefs(t, db)
-	session, err := users.NewService(db, "http://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}).CreateSession(context.Background(), 42)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b.client.Jar.SetCookies(mustURL(t, b.server.URL), []*http.Cookie{{Name: sessionCookie, Value: session.ID, Path: "/"}})
-	status, body, _ := b.get("/admin/members/create")
-	if status != 200 || strings.Contains(body, "Aufgabe im Vorstand") {
-		t.Fatal("invitation form unavailable or still asks for board role")
-	}
-	csrf := csrfFrom(t, body)
-	if status, _, _ := b.post("/admin/members/create", url.Values{"csrf": {csrf}, "name": {"Neue Person"}, "email": {"new@studmail.w-hs.de"}}); status != 303 {
-		t.Fatal("invitation failed")
-	}
-	if status, body, _ := b.get("/admin/members"); status != 200 || !strings.Contains(body, "new@studmail.w-hs.de") || !strings.Contains(body, "Eingeladen") {
-		t.Fatal("pending invitation not visible")
-	}
-	var link string
-	if err := db.QueryRow(`SELECT link FROM mail_outbox WHERE recipient='new@studmail.w-hs.de'`).Scan(&link); err != nil {
-		t.Fatal(err)
-	}
-	target, err := url.Parse(link)
-	if err != nil {
-		t.Fatal(err)
-	}
-	invitee := newAdminBrowser(t, b.server)
-	status, body, _ = invitee.get(target.RequestURI())
-	if status != 200 {
-		t.Fatal("invitation registration unavailable")
-	}
-	var verified int
-	if err := db.QueryRow(`SELECT verified FROM users WHERE email='new@studmail.w-hs.de'`).Scan(&verified); err != nil || verified != 0 {
-		t.Fatal("GET consumed invitation")
-	}
-	form := url.Values{"csrf": {csrfFrom(t, body)}, "token": {target.Query().Get("token")}, "password": {"secure 🔐🔐🔐"}}
-	if status, _, h := invitee.post("/invitation/accept", form); status != 303 || h.Get("Location") != "/invitation/accept" {
-		t.Fatal("invitation confirmation failed")
-	}
-	if status, body, _ := invitee.get("/invitation/accept"); status != 200 || !strings.Contains(body, "Dein Konto ist bestätigt") {
-		t.Fatal("invitation receipt missing")
-	}
-	_, body, _ = invitee.get("/login")
-	if status, _, headers := invitee.post("/login", url.Values{"csrf": {csrfFrom(t, body)}, "email": {"new@studmail.w-hs.de"}, "password": {"secure 🔐🔐🔐"}}); status != 303 || headers.Get("Location") != "/admin" {
-		t.Fatal("confirmed member could not log in as reviewer")
-	}
-	if status, _, _ := invitee.get("/admin/submissions"); status != 200 {
-		t.Fatal("reviewer cannot access submissions")
-	}
-	for _, path := range []string{"/admin/users", "/admin/members/create"} {
-		if status, _, _ := invitee.get(path); status != 403 {
-			t.Fatalf("invitation granted administration of %s", path)
-		}
-	}
-	if status, _, _ := invitee.get(target.RequestURI()); status != 422 {
-		t.Fatal("consumed invitation remained usable")
-	}
-}
-
-func TestExistingMemberInvitationAndAccountEditing(t *testing.T) {
-	b, db := identityBrowser(t)
-	memberPath := "/admin/members/" + publicRef(t, db, "members", "1") + "/edit"
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (42,'admin@fsv-wh.de','Admin','unused','admin',1,1)`); err != nil {
-		t.Fatal(err)
-	}
-	seedPublicRefs(t, db)
-	session, err := users.NewService(db, "http://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}).CreateSession(context.Background(), 42)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b.client.Jar.SetCookies(mustURL(t, b.server.URL), []*http.Cookie{{Name: sessionCookie, Value: session.ID, Path: "/"}})
-	status, body, _ := b.get(memberPath)
-	if status != 200 || !strings.Contains(body, "E-Mail-Adresse des Benutzerkontos") {
-		t.Fatal("existing member cannot be linked to an account")
-	}
-	csrf := csrfFrom(t, body)
-	if status, _, _ := b.post(memberPath, url.Values{"csrf": {csrf}, "name": {"Linked Member"}, "email": {"linked@studmail.w-hs.de"}}); status != 303 {
-		t.Fatal("existing member invitation failed")
-	}
-	var userID int64
-	if err := db.QueryRow(`SELECT user_id FROM people WHERE id='1'`).Scan(&userID); err != nil {
-		t.Fatal(err)
-	}
-	var count int
-	if err := db.QueryRow(`SELECT count(*) FROM people WHERE user_id=?`, userID).Scan(&count); err != nil || count != 1 {
-		t.Fatal("invitation duplicated the membership")
-	}
-	if status, body, _ := b.get("/team"); status != 200 || !strings.Contains(body, "Linked Member") {
-		t.Fatal("pending confirmation hid the public member")
-	}
-	status, body, _ = b.get(memberPath)
-	accountPath := "/admin/users/" + publicRef(t, db, "users", fmt.Sprint(userID))
-	if status != 200 || !strings.Contains(body, accountPath) || strings.Contains(body, `name="email"`) {
-		t.Fatal("linked member is not using the account identity")
-	}
-	if status, _, _ := b.post(memberPath, url.Values{"csrf": {csrfFrom(t, body)}, "name": {"Updated Member"}, "email": {"unexpected@studmail.w-hs.de"}}); status != 303 {
-		t.Fatal("linked member name edit failed")
-	}
-	if status, body, _ := b.get(accountPath); status != 200 || strings.Contains(body, "Updated Member") || !strings.Contains(body, "Linked Member") || !strings.Contains(body, "linked@studmail.w-hs.de") || !strings.Contains(body, `href="`+memberPath+`"`) {
-		t.Fatal("public name edit changed account identity or linkage")
-	}
-	if status, body, _ := b.get("/team"); status != 200 || !strings.Contains(body, "Updated Member") {
-		t.Fatal("public name edit not shown")
+func TestUserInvitationRegistrationJourney(t *testing.T) {
+	for _, role := range []string{"editor", "admin"} {
+		t.Run(role, func(t *testing.T) {
+			b, db := identityBrowser(t)
+			if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'admin@fsv-wh.de','Admin','unused','admin',1,1)`); err != nil {
+				t.Fatal(err)
+			}
+			identity := users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"fsv-wh.de", "studmail.w-hs.de"}})
+			session, err := identity.CreateSession(context.Background(), 42)
+			if err != nil {
+				t.Fatal(err)
+			}
+			b.client.Jar.SetCookies(mustURL(t, b.server.URL), []*http.Cookie{{Name: sessionCookie, Value: session.ID, Path: "/"}})
+			status, body, _ := b.get("/admin/users/create")
+			if status != 200 || !strings.Contains(body, "Systemadministration") || strings.Contains(body, `id="functions"`) || strings.Contains(body, `id="organization"`) {
+				t.Fatal("access question missing or unrelated questions visible")
+			}
+			form := url.Values{"csrf": {csrfFrom(t, body)}, "step": {"access"}, "role": {role}}
+			status, body, _ = b.post("/admin/users/create", form)
+			if status != 200 {
+				t.Fatal("access step failed", status)
+			}
+			if role == "editor" {
+				if !strings.Contains(body, `id="kind"`) || strings.Contains(body, `name="organization"`) {
+					t.Fatal("kind step missing")
+				}
+				form.Set("step", "kind")
+				form.Set("kind", "board")
+				if status, body, _ = b.post("/admin/users/create", form); status != 200 || !strings.Contains(body, "Vorsitz") || strings.Contains(body, "Öffentlichkeit") {
+					t.Fatal("functions not filtered by kind")
+				}
+				form.Set("step", "functions")
+				if status, _, _ = b.post("/admin/users/create", form); status != 422 {
+					t.Fatal("empty functions accepted")
+				}
+				finance := publicRef(t, db, "roles", "1")
+				publicity := publicRef(t, db, "roles", "6")
+				form["functions"] = []string{publicity}
+				if status, _, _ = b.post("/admin/users/create", form); status != 422 {
+					t.Fatal("function from another kind accepted")
+				}
+				form["functions"] = []string{finance}
+				if status, body, _ = b.post("/admin/users/create", form); status != 200 || !strings.Contains(body, "Weitere Funktionen hinzufügen") {
+					t.Fatal("assignment list missing")
+				}
+				form.Set("step", "assignments")
+				form["assigned"] = []string{finance}
+				form.Del("functions")
+				form.Set("add", "true")
+				if status, body, _ = b.post("/admin/users/create", form); status != 200 || !strings.Contains(body, `id="kind"`) {
+					t.Fatal("add another did not return to kind")
+				}
+				form.Del("add")
+				form.Set("step", "kind")
+				form.Set("kind", "departments")
+				if status, _, _ = b.post("/admin/users/create", form); status != 200 {
+					t.Fatal("second kind step failed")
+				}
+				form.Set("step", "functions")
+				form["functions"] = []string{publicity}
+				if status, body, _ = b.post("/admin/users/create", form); status != 200 || !strings.Contains(body, "Öffentlichkeit") || !strings.Contains(body, "Vorsitz") {
+					t.Fatal("multiple assignments lost")
+				}
+				form.Set("step", "assignments")
+				form["assigned"] = []string{finance, publicity}
+				form.Del("functions")
+				form.Set("remove", publicity)
+				if status, body, _ = b.post("/admin/users/create", form); status != 200 || strings.Contains(body, " / Öffentlichkeit") {
+					t.Fatal("remove failed")
+				}
+				form.Del("remove")
+				form["assigned"] = []string{finance}
+				if status, body, _ = b.post("/admin/users/create", form); status != 200 || !strings.Contains(body, `name="email"`) {
+					t.Fatal("details step missing")
+				}
+			} else if strings.Contains(body, `id="functions"`) || strings.Contains(body, `name="organization"`) {
+				t.Fatal("system administration asks organizational questions")
+			}
+			form.Set("step", "details")
+			form.Set("name", "Neue Person")
+			form.Set("email", "new@studmail.w-hs.de")
+			if status, _, _ = b.post("/admin/users/create", form); status != 303 {
+				t.Fatal("invitation failed", status)
+			}
+			var link string
+			var id int64
+			if err := db.QueryRow(`SELECT id FROM users WHERE email='new@studmail.w-hs.de'`).Scan(&id); err != nil {
+				t.Fatal(err)
+			}
+			if err := db.QueryRow(`SELECT link FROM mail_outbox WHERE user_id=?`, id).Scan(&link); err != nil {
+				t.Fatal(err)
+			}
+			target, err := url.Parse(link)
+			if err != nil {
+				t.Fatal(err)
+			}
+			invitee := newAdminBrowser(t, b.server)
+			status, body, _ = invitee.get(target.RequestURI())
+			if status != 200 || !strings.Contains(body, `id="invite-email"`) || !strings.Contains(body, "disabled") {
+				t.Fatal("fixed invitation fields missing")
+			}
+			accept := url.Values{"csrf": {csrfFrom(t, body)}, "token": {target.Query().Get("token")}, "password": {"secure password"}, "name": {"Attacker"}, "email": {"attacker@fsv-wh.de"}, "role": {"admin"}}
+			if status, _, _ := invitee.post("/invitation/accept", accept); status != 303 {
+				t.Fatal("accept failed", status)
+			}
+			var name, email, storedRole string
+			if err := db.QueryRow(`SELECT name,email,role FROM users WHERE id=?`, id).Scan(&name, &email, &storedRole); err != nil || name != "Neue Person" || email != "new@studmail.w-hs.de" || storedRole != role {
+				t.Fatal("invitation details changed", err)
+			}
+			_, body, _ = invitee.get("/login")
+			if status, _, h := invitee.post("/login", url.Values{"csrf": {csrfFrom(t, body)}, "email": {email}, "password": {"secure password"}}); status != 303 || h.Get("Location") != "/admin" {
+				t.Fatal("login failed")
+			}
+			want := 403
+			if role == "admin" {
+				want = 200
+			}
+			if status, _, _ := invitee.get("/admin/users"); status != want {
+				t.Fatal("incorrect access", status)
+			}
+			if status, body, _ := b.get("/admin/users/" + publicRef(t, db, "users", fmt.Sprint(id))); status != 200 || (role == "editor" && !strings.Contains(body, "Vorsitz")) {
+				t.Fatal("account assignments missing")
+			}
+		})
 	}
 }
