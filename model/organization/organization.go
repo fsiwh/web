@@ -165,7 +165,7 @@ func (s *Store) Save(ctx context.Context, user int64, d Details) (map[string]str
 			continue
 		}
 		var count int
-		if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM responsibilities WHERE id=? AND group_name=?", value, group).Scan(&count); err != nil {
+		if err = tx.QueryRowContext(ctx, "SELECT count(*) FROM functions WHERE id=? AND group_name=? AND organization_id=1", value, group).Scan(&count); err != nil {
 			return nil, err
 		}
 		if count != 1 {

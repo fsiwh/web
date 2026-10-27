@@ -56,18 +56,16 @@ func TestPublicIDMigrationPreservesKeysAndReservations(t *testing.T) {
 	if err := db.QueryRow(`SELECT cover_path FROM events WHERE id=987654321012346`).Scan(&cover); err != nil || cover != "legacy/cover.jpg" {
 		t.Fatal("changed stored key", err)
 	}
-	memberID, err := publicid.Lookup(ctx, db, "members", "legacy-person")
-	if err != nil {
+	var memberID string
+	if err := db.QueryRow(`SELECT public_id FROM public_ids WHERE namespace='members' AND record_id='legacy-person' AND retired=1`).Scan(&memberID); err != nil {
 		t.Fatal(err)
 	}
 	if err := Migrate(path, logger); err != nil {
 		t.Fatal(err)
 	}
-	if again, err := publicid.Lookup(ctx, db, "members", "legacy-person"); err != nil || again != memberID {
-		t.Fatal("restart changed public ID", again, err)
-	}
-	if _, err := db.Exec(`DELETE FROM people WHERE id='legacy-person'`); err != nil {
-		t.Fatal(err)
+	var again string
+	if err := db.QueryRow(`SELECT public_id FROM public_ids WHERE namespace='members' AND record_id='legacy-person' AND retired=1`).Scan(&again); err != nil || again != memberID {
+		t.Fatal("restart changed retired public ID", again, err)
 	}
 	var retired int
 	if err := db.QueryRow(`SELECT retired FROM public_ids WHERE namespace='members' AND record_id='legacy-person'`).Scan(&retired); err != nil || retired != 1 {

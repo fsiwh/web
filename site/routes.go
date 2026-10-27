@@ -158,7 +158,7 @@ func registerAdmin(c *Handler, register routeRegister) {
 	register("GET "+urls.AdminRegulationsPath, reviewer, section("regulations", c.Admin))
 	register("GET "+urls.AdminRegulationPattern, reviewer, section("regulations", c.Admin))
 	register("GET /admin/regulation-documents/{id}", reviewer, c.AdminRegulationDocument)
-	for _, item := range []struct{ name, path string }{{"settings", urls.AdminSettingsPath}, {"members", urls.AdminMembersPath}, {"roles", urls.AdminRolesPath}, {"meetings", urls.AdminMeetingsPath}} {
+	for _, item := range []struct{ name, path string }{{"settings", urls.AdminSettingsPath}, {"roles", urls.AdminRolesPath}, {"meetings", urls.AdminMeetingsPath}} {
 		register("GET "+item.path, reviewer, section(item.name, c.Admin))
 	}
 	register("GET "+urls.AdminUsersPath, admin, section("users", c.Admin))
@@ -174,7 +174,7 @@ func registerAdmin(c *Handler, register routeRegister) {
 		}
 		register("POST "+urls.AdminSettingsPath+"/"+name, policy, handler)
 	}
-	for _, item := range []struct{ name, create, edit string }{{"members", urls.CreateAdminMemberPath, urls.EditAdminMemberPattern}, {"roles", urls.CreateAdminRolePath, urls.EditAdminRolePattern}, {"meetings", urls.CreateAdminMeetingPath, urls.EditAdminMeetingPattern}} {
+	for _, item := range []struct{ name, create, edit string }{{"roles", urls.CreateAdminRolePath, urls.EditAdminRolePattern}, {"meetings", urls.CreateAdminMeetingPath, urls.EditAdminMeetingPattern}} {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			r.SetPathValue("id", "create")
 			section(item.name, c.Admin)(w, r)
@@ -186,8 +186,6 @@ func registerAdmin(c *Handler, register routeRegister) {
 		form(item.create, createPolicy, handler)
 		form(item.edit, reviewer, section(item.name, c.Admin))
 	}
-	register("GET "+urls.AdminMemberPattern, reviewer, section("members", c.Admin))
-	register("POST "+urls.AdminMemberPattern+"/invite", admin, c.ResendInvitation)
 	register("GET "+urls.AdminMeetingPattern, reviewer, section("meetings", c.Admin))
 	form(urls.AdminMeetingPattern+"/check", reviewer, c.ReviewPublication)
 	register("GET "+urls.AdminSubmissionsPath, reviewer, section("submissions", c.Admin))
@@ -197,4 +195,9 @@ func registerAdmin(c *Handler, register routeRegister) {
 	register("GET "+urls.AdminUserPattern, admin, section("users", c.Admin))
 	form(urls.AdminUserPattern+"/reset", admin, c.ResetUserPassword)
 	register("POST "+urls.AdminUserPattern+"/confirm", admin, c.ResendUserConfirmation)
+	form("/admin/users/create", admin, c.InviteUser)
+	form("/admin/users/{id}/edit", admin, func(w http.ResponseWriter, r *http.Request) {
+		c.EditMember(w, r, &view.AdminPage{Section: "users", SectionTitle: "Benutzerkonten"})
+	})
+	form("/admin/team/{id}/edit", reviewer, c.EditPublicUser)
 }

@@ -37,7 +37,7 @@ func Migrate(dsn string, logger *log.Logger) error {
 	if err != nil {
 		return fmt.Errorf("goose: embedded migrations: %w", err)
 	}
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, files, goose.WithGoMigrations(utcEnforcementMigration(), publicIDsMigration(), publicIDSequencesMigration(), programNamesMigration(), programVersionsMigration()))
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, files, goose.WithGoMigrations(utcEnforcementMigration(), publicIDsMigration(), publicIDSequencesMigration(), programNamesMigration(), programVersionsMigration(), unifiedUsersMigration()))
 	if err != nil {
 		return fmt.Errorf("goose: create migration provider: %w", err)
 	}
