@@ -26,7 +26,7 @@ func (s *Store) SavePublicName(ctx context.Context, actor int64, id, name string
 	if message := users.NameError(name); message != "" {
 		return map[string]string{"name": message}, nil
 	}
-	result, err := s.db.ExecContext(ctx, "UPDATE people SET public_name=? WHERE id=?", name, id)
+	result, err := s.db.ExecContext(ctx, `UPDATE users SET public_name=? WHERE id=? AND deleted_at IS NULL AND (role IN ('editor','admin') OR EXISTS(SELECT 1 FROM user_functions WHERE user_id=users.id))`, name, id)
 	if err != nil {
 		return nil, err
 	}

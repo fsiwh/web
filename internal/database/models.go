@@ -401,6 +401,9 @@ type User struct {
 	DeletedAt            *string `json:"deleted_at"`
 	PasswordResetToken   *string `json:"password_reset_token"`
 	PasswordResetExpires *string `json:"password_reset_expires"`
+	PublicEmail          string  `json:"public_email"`
+	PublicName           string  `json:"public_name"`
+	InvitationPending    int64   `json:"invitation_pending"`
 }
 
 type UserArchivePreference struct {

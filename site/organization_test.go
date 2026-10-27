@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fachschaftinformatik/web/model/members"
 	"github.com/fachschaftinformatik/web/model/organization"
 )
 
@@ -208,7 +209,13 @@ func TestLegalRevisionFollowsLinkedContactChanges(t *testing.T) {
 		}
 	}
 	reset()
-	chair := c.members.Members()[0]
+	var chair members.Member
+	for _, u := range c.members.Members() {
+		if u.UserID == 800 {
+			chair = u
+			break
+		}
+	}
 	if errors := c.members.SaveMember(chair); len(errors) != 0 {
 		t.Fatal(errors)
 	}
@@ -229,9 +236,9 @@ func TestLegalRevisionFollowsLinkedContactChanges(t *testing.T) {
 	}
 	check(today)
 	for _, statement := range []string{
-		`UPDATE responsibilities SET email='new-chair@example.org' WHERE id='1'`,
-		`DELETE FROM responsibility_members WHERE responsibility_id='1'`,
-		`INSERT INTO responsibility_members(responsibility_id,person_id,position) VALUES('1','1',0)`,
+		`UPDATE functions SET email='new-chair@example.org' WHERE id='1'`,
+		`DELETE FROM user_functions WHERE function_id='1'`,
+		`INSERT INTO user_functions(function_id,user_id,position) VALUES('1',800,0)`,
 	} {
 		reset()
 		if _, err := db.Exec(statement); err != nil {
@@ -239,7 +246,7 @@ func TestLegalRevisionFollowsLinkedContactChanges(t *testing.T) {
 		}
 		check(today)
 	}
-	if _, err := db.Exec(`UPDATE people SET user_id=900 WHERE id='1'`); err != nil {
+	if _, err := db.Exec(`UPDATE user_functions SET user_id=900 WHERE function_id='1'`); err != nil {
 		t.Fatal(err)
 	}
 	reset()

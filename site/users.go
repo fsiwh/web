@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/fachschaftinformatik/web/internal/urls"
@@ -69,6 +70,14 @@ func (c *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			a.View, a.User = "user", ptr(userView(user))
+			a.InvitationPending = user.InvitationPending
+			for _, kind := range []string{"board", "departments", "project"} {
+				for _, f := range c.members.Roles(kind) {
+					if slices.Contains(f.MemberIDs, strconv.FormatInt(user.ID, 10)) {
+						a.Assignments = append(a.Assignments, f.Organization+" / "+view.MemberRoleKind(f.Group)+" / "+f.Title)
+					}
+				}
+			}
 			for _, member := range c.members.Members() {
 				if member.UserID != 0 && member.UserID == user.ID {
 					a.Member = ptr(memberView(member))
@@ -103,45 +112,25 @@ func (c *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 		if a.Page < a.Pages {
 			a.NextURL = a.UserPageURL(a.Page + 1)
 		}
-	case "members", "roles":
+	case "roles":
 		if id != "" {
-			if section == "roles" {
-				c.EditRole(w, r, a)
-			} else {
-				c.EditMember(w, r, a)
-			}
+			c.EditRole(w, r, a)
 			return
 		}
-		a.View = "members"
-		if section == "roles" {
-			a.View = "roles"
-		}
+		a.View = "roles"
 		members := c.members.Members()
 		roles := append(c.members.Roles("board"), c.members.Roles("departments")...)
 		roles = append(roles, c.members.Roles("project")...)
-		for _, member := range members {
-			row := view.AdminMemberRow{Member: memberView(member)}
-			if a.ReviewerOnly {
-				row.Member.UserID = 0
-				row.Member.UserPublicID = ""
-				row.Member.AccountEmail = ""
-				row.Member.Confirmed = false
-			}
-			for _, role := range roles {
-				if slices.Contains(role.MemberIDs, member.ID) {
-					row.Roles = append(row.Roles, role.Title+" ("+view.MemberRoleKind(role.Group)+")")
-				}
-			}
-			a.Members = append(a.Members, row)
-		}
 		for _, role := range roles {
 			var names []string
+			var links []view.Link
 			for _, member := range members {
 				if slices.Contains(role.MemberIDs, member.ID) {
 					names = append(names, member.Name)
+					links = append(links, view.Link{Title: member.Name, URL: "/admin/team/" + member.PublicID + "/edit"})
 				}
 			}
-			a.Roles = append(a.Roles, view.AdminRoleRow{Title: role.Title, Kind: view.MemberRoleKind(role.Group), Members: names, URL: urls.EditAdminRole(role.PublicID)})
+			a.Roles = append(a.Roles, view.AdminRoleRow{Title: role.Title, Kind: role.Organization + " / " + view.MemberRoleKind(role.Group), Members: names, MemberLinks: links, URL: urls.EditAdminRole(role.PublicID)})
 		}
 	case "meetings":
 		if id != "" {

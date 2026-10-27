@@ -70,11 +70,11 @@ func (b *adminBrowser) login() {
 func TestAdminAuthenticationAndMutations(t *testing.T) {
 	handler, db := testApplication(t)
 	seedPublicContent(t, db)
-	member := publicRef(t, db, "members", "1")
+	member := publicRef(t, db, "users", "800")
 	server := httptest.NewServer(handler)
 	defer server.Close()
 	b := newAdminBrowser(t, server)
-	for _, path := range []string{"/admin", "/admin/users", "/admin/members/" + member + "/edit", "/admin/meetings/create"} {
+	for _, path := range []string{"/admin", "/admin/users", "/admin/users/" + member + "/edit", "/admin/meetings/create"} {
 		if status, _, headers := b.get(path); status != 303 || headers.Get("Location") != "/login" {
 			t.Fatalf("unprotected route: %s", path)
 		}
@@ -99,13 +99,13 @@ func TestAdminAuthenticationAndMutations(t *testing.T) {
 	if status, _, _ := b.get("/admin/users/missing"); status != 404 {
 		t.Fatal("unknown user accepted")
 	}
-	if status, _, _ := b.post("/admin/members/"+member+"/edit", url.Values{"name": {"Changed"}}); status != 403 {
+	if status, _, _ := b.post("/admin/users/"+member+"/edit", url.Values{"name": {"Changed"}}); status != 403 {
 		t.Fatal("write without CSRF accepted")
 	}
-	if status, body, _ := b.post("/admin/members/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {""}, "email": {"not-email"}}); status != 422 || !strings.Contains(body, "govuk-error-summary") {
+	if status, body, _ := b.post("/admin/users/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {""}, "public_email": {"not-email"}}); status != 422 || !strings.Contains(body, "govuk-error-summary") {
 		t.Fatal("invalid member accepted")
 	}
-	if status, _, _ := b.post("/admin/members/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {"Demo-Vorsitz"}, "role": {"Vorsitz"}, "email": {"demo@studmail.w-hs.de"}}); status != 303 {
+	if status, _, _ := b.post("/admin/users/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {"Demo-Vorsitz"}, "public_email": {"demo@studmail.w-hs.de"}}); status != 303 {
 		t.Fatal("member edit failed")
 	}
 	if _, body, _ := b.get("/team"); !strings.Contains(body, "Demo-Vorsitz") {
@@ -117,7 +117,7 @@ func TestAdminAuthenticationAndMutations(t *testing.T) {
 	if _, body, _ := b.get("/team"); !strings.Contains(body, "Demo-Referat") {
 		t.Fatal("public responsibility missing")
 	}
-	if status, body, _ := b.get("/admin/members"); status != 200 || !strings.Contains(body, "Demo-Vorsitz") || !strings.Contains(body, "Demo-Referat (Referat)") {
+	if status, body, _ := b.get("/admin/users/" + member); status != 200 || !strings.Contains(body, "Demo-Vorsitz") || !strings.Contains(body, "Demo-Referat") {
 		t.Fatal("member overview lost assignments")
 	}
 	if status, body, _ := b.get("/admin/roles"); status != 200 || !strings.Contains(body, "Demo-Referat") || !strings.Contains(body, "Demo-Vorsitz") {

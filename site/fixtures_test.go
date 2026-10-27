@@ -35,7 +35,7 @@ func publicRef(t *testing.T, db *sql.DB, namespace, recordID string) string {
 func seedPublicRefs(t *testing.T, db *sql.DB) {
 	t.Helper()
 	for namespace, table := range map[string]string{
-		"users": "users", "members": "people", "roles": "responsibilities",
+		"users": "users", "members": "users", "roles": "functions",
 		"posts": "discussion_posts", "comments": "discussion_comments",
 		"events": "events", "albums": "events", "media": "media",
 		"programs": "programs", "modules": "modules", "documents": "archive",
