@@ -42,7 +42,7 @@ jobs:
         with:
           configurationFile: .github/renovate-config.json
           token: ${{ steps.app-token.outputs.token }}
-          renovate-version: '44.181.4@sha256:e2440463a0fff07e43875643324f8b57f6c3a9a8365332b7183989514f81e9ee'
+          renovate-version: '44.183.0@sha256:bc0efebde12e3cb457b6577348b7194d79dcfaa29e4fa6aacd4a1856e3540cbc'
         env:
           LOG_LEVEL: ${{ inputs.debug && 'debug' || 'info' }}
           RENOVATE_REPOSITORIES: ${{ github.repository }}
