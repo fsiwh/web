@@ -188,7 +188,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (int64, err
 }
 
 func (s *Service) Directory(ctx context.Context) (*Directory, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT u.id,u.name,lower(u.email),u.role,COALESCE(p.name,''),COALESCE(pq.degree,''),u.active=1,u.verified=1 FROM users u LEFT JOIN programs p ON p.id=u.program_id LEFT JOIN program_qualifications pq ON pq.legacy_program_id=p.id WHERE u.deleted_at IS NULL ORDER BY u.name COLLATE NOCASE,u.id`)
+	rows, err := s.db.QueryContext(ctx, `SELECT u.id,u.name,lower(u.email),u.role,COALESCE(p.name,''),COALESCE(pq.degree,''),u.active=1,u.verified=1,u.invitation_pending=1 FROM users u LEFT JOIN programs p ON p.id=u.program_id LEFT JOIN program_qualifications pq ON pq.legacy_program_id=p.id WHERE u.deleted_at IS NULL ORDER BY u.name COLLATE NOCASE,u.id`)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +196,7 @@ func (s *Service) Directory(ctx context.Context) (*Directory, error) {
 	var records []User
 	for rows.Next() {
 		var user User
-		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Program, &user.Degree, &user.Active, &user.Verified); err != nil {
+		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.Role, &user.Program, &user.Degree, &user.Active, &user.Verified, &user.InvitationPending); err != nil {
 			return nil, err
 		}
 		records = append(records, user)
@@ -452,7 +452,7 @@ func (s *Service) ConsumeToken(ctx context.Context, value, kind, password string
 	}
 	defer tx.Rollback()
 	var userID int64
-	err = tx.QueryRowContext(ctx, `DELETE FROM user_tokens WHERE id=? AND kind=? AND expires_at>? AND user_id IN (SELECT id FROM users WHERE deleted_at IS NULL) RETURNING user_id`, digest(value), kind, datetime.FormatUTC(time.Now())).Scan(&userID)
+	err = tx.QueryRowContext(ctx, `DELETE FROM user_tokens WHERE id=? AND kind=? AND expires_at>? AND user_id IN (SELECT id FROM users WHERE deleted_at IS NULL AND (?<>'verify' OR invitation_pending=0)) RETURNING user_id`, digest(value), kind, datetime.FormatUTC(time.Now()), kind).Scan(&userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		if err := tx.Rollback(); err != nil {
 			return err

@@ -1,4 +1,13 @@
 /* Documentation-site shell, based on design-system.service.gov.uk/get-started/. */
+.app-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
 .app-header {
   background: #1d70b8;
 }

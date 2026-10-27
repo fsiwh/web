@@ -5,21 +5,22 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fachschaftinformatik/web/model/members"
+	"context"
 )
 
 func TestLegalChairFollowsMemberAssignments(t *testing.T) {
-	c, _ := testApplication(t)
+	c, db := testApplication(t)
 	store := c.members
-	if errors := store.SaveMember(members.Member{ID: "create", Name: "Neue Vorsitzperson", Email: "private@example.test"}); len(errors) != 0 {
-		t.Fatal(errors)
+	if _, err := db.Exec(`INSERT INTO users(id,name,email,password,role) VALUES(999,'Neue Vorsitzperson','private@example.test','!','editor')`); err != nil {
+		t.Fatal(err)
 	}
-	persons := store.Members()
-	person := persons[len(persons)-1]
+	if err := store.Refresh(context.Background()); err != nil {
+		t.Fatal(err)
+	}
 	for _, role := range store.Roles("board") {
 		if role.Title == "Vorsitz" {
 			role.Title = "Sprecherkreis"
-			role.MemberIDs = []string{person.ID}
+			role.MemberIDs = []string{"999"}
 			if errors := store.SaveRole(role); len(errors) != 0 {
 				t.Fatal(errors)
 			}
