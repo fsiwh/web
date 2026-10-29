@@ -32,6 +32,25 @@
           ? " govuk-frontend-supported"
           : "");
     </script>
+    {{ if ne .Active "cookies" }}
+    <div class="govuk-cookie-banner" data-cookie-banner role="region" aria-label="Cookies auf {{ .Organization.Name }}" data-nosnippet hidden>
+      <div class="govuk-cookie-banner__message govuk-width-container">
+        <div class="govuk-grid-row">
+          <div class="govuk-grid-column-two-thirds">
+            <h2 class="govuk-cookie-banner__heading govuk-heading-m">Cookies auf {{ .Organization.Name }}</h2>
+            <div class="govuk-cookie-banner__content">
+              <p class="govuk-body">Wir verwenden einige notwendige Cookies, damit diese Website funktioniert.</p>
+              <p class="govuk-body">Wir verwenden außerdem ein Cookie, um uns zu merken, dass du diese Nachricht ausgeblendet hast.</p>
+            </div>
+          </div>
+        </div>
+        <div class="govuk-button-group">
+          <button class="govuk-button" type="button" data-cookie-hide>Nachricht ausblenden</button>
+          <a class="govuk-link" href="/cookies">Cookies ansehen</a>
+        </div>
+      </div>
+    </div>
+    {{ end }}
     <a
       class="govuk-skip-link"
       data-module="govuk-skip-link"
@@ -178,7 +197,7 @@
       </main>
     </div>
     {{ else if or (eq .Active "contact") (eq .Active "sitemap") (eq .Active
-    "legal") (eq .Active "error") }}
+    "legal") (eq .Active "cookies") (eq .Active "error") }}
     <div class="govuk-width-container">
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-two-thirds">
@@ -272,6 +291,9 @@
               </li>
               <li class="govuk-footer__inline-list-item">
                 <a class="govuk-footer__link" href="/privacy">Datenschutz</a>
+              </li>
+              <li class="govuk-footer__inline-list-item">
+                <a class="govuk-footer__link" href="/cookies">Cookies</a>
               </li>
               <li class="govuk-footer__inline-list-item">
                 <a class="govuk-footer__link" href="/contact">Kontakt</a>

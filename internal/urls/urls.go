@@ -14,6 +14,7 @@ const (
 	SitemapPath                = "/sitemap"
 	LegalPath                  = "/legal"
 	PrivacyPath                = "/privacy"
+	CookiesPath                = "/cookies"
 	AccessibilityPath          = "/accessibility"
 	ContactPath                = "/contact"
 	ElectionsPath              = "/elections"

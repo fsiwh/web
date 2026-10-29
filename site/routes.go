@@ -67,6 +67,9 @@ func registerPages(c *Handler, register routeRegister) {
 	})
 	register("GET "+urls.TeamPath, public, c.Team)
 	register("GET "+urls.SitemapPath, public, c.Sitemap)
+	register("GET "+urls.CookiesPath, public, func(w http.ResponseWriter, r *http.Request) {
+		c.render(w, "cookies", false, view.Page{Title: "Cookies auf dieser Website", Active: "cookies"})
+	})
 	for _, path := range []string{urls.LegalPath, urls.PrivacyPath, urls.AccessibilityPath} {
 		register("GET "+path, public, c.Legal)
 	}
