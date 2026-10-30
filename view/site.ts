@@ -908,7 +908,147 @@ function initSessionWarning() {
   tick();
 }
 
+function initPageFeedback() {
+  const section = document.querySelector<HTMLElement>(".app-page-feedback");
+  if (!section) return;
+  const prompt = requireElement(".app-page-feedback__prompt", section);
+  const panel = requireElement(".app-page-feedback__panel", section);
+  let busy = false;
+  let lastButton: HTMLButtonElement | null = null;
+  const show = async (response: Response) => {
+    const doc = new DOMParser().parseFromString(
+      await response.text(),
+      "text/html",
+    );
+    const result = doc.querySelector<HTMLElement>("[data-feedback-result]");
+    if (!result) throw new Error("Feedback response unavailable");
+    const thanks = result.querySelector<HTMLElement>("[data-feedback-thanks]");
+    if (thanks) {
+      const message = document.createElement("p");
+      message.className = "app-page-feedback__thanks";
+      message.setAttribute("role", "status");
+      message.tabIndex = -1;
+      message.textContent = thanks.textContent;
+      prompt.replaceChildren(message);
+      prompt.hidden = false;
+      panel.hidden = true;
+      message.focus();
+      return;
+    }
+    panel.replaceChildren(document.importNode(result, true));
+    prompt.hidden = true;
+    panel.hidden = false;
+    panel
+      .querySelector<HTMLElement>(".govuk-error-summary, h2, textarea")
+      ?.focus();
+  };
+  section
+    .querySelectorAll<HTMLFormElement>("[data-page-feedback]")
+    .forEach((form) => {
+      form.addEventListener("submit", async (event) => {
+        const button = (event as SubmitEvent)
+          .submitter as HTMLButtonElement | null;
+        if (!button) return;
+        event.preventDefault();
+        if (busy) return;
+        lastButton = button;
+        busy = true;
+        const params = new URLSearchParams({
+          path: window.location.pathname,
+          value: button.value,
+        });
+        const target = `/feedback?${params}`;
+        try {
+          const response = await fetch(target);
+          if (!response.ok) throw new Error("Feedback form unavailable");
+          if (button.value === "problem") {
+            await show(response);
+          } else {
+            if (button.value === "no") await show(response.clone());
+            const doc = new DOMParser().parseFromString(
+              await response.text(),
+              "text/html",
+            );
+            const token =
+              doc.querySelector<HTMLInputElement>('input[name="csrf"]')?.value;
+            if (!token) throw new Error("Missing feedback token");
+            params.set("csrf", token);
+            const sent = await fetch("/feedback", {
+              method: "POST",
+              body: params,
+            });
+            if (!sent.ok) throw new Error("Feedback delivery failed");
+            await show(sent);
+          }
+        } catch {
+          const container = panel.hidden ? prompt : panel;
+          let error = container.querySelector<HTMLElement>(
+            "[data-feedback-error]",
+          );
+          if (!error) {
+            error = document.createElement("p");
+            error.dataset.feedbackError = "";
+            error.className = "govuk-error-message";
+            error.setAttribute("role", "alert");
+            container.append(error);
+          }
+          error.textContent =
+            "Deine Rückmeldung konnte nicht gesendet werden. Versuche es später erneut.";
+        } finally {
+          busy = false;
+        }
+      });
+    });
+  panel.addEventListener("click", (event) => {
+    if (
+      !(event.target instanceof Element) ||
+      !event.target.closest("[data-feedback-cancel]")
+    )
+      return;
+    event.preventDefault();
+    panel.hidden = true;
+    prompt.hidden = false;
+    lastButton?.focus();
+  });
+  panel.addEventListener("submit", async (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    event.preventDefault();
+    if (busy) return;
+    busy = true;
+    const button = form.querySelector<HTMLButtonElement>(
+      'button[type="submit"]',
+    );
+    if (button) button.disabled = true;
+    try {
+      const data = new URLSearchParams();
+      new FormData(form).forEach((value, key) => {
+        if (typeof value === "string") data.set(key, value);
+      });
+      const response = await fetch(form.action, { method: "POST", body: data });
+      if (!response.ok && response.status !== 422)
+        throw new Error("Feedback delivery failed");
+      await show(response);
+    } catch {
+      let error = panel.querySelector<HTMLElement>("[data-feedback-error]");
+      if (!error) {
+        error = document.createElement("p");
+        error.dataset.feedbackError = "";
+        error.className = "govuk-error-message";
+        error.setAttribute("role", "alert");
+        form.prepend(error);
+      }
+      error.textContent =
+        "Deine Rückmeldung konnte nicht gesendet werden. Versuche es später erneut.";
+    } finally {
+      busy = false;
+      if (button) button.disabled = false;
+    }
+  });
+}
+
 function initSite() {
+  initPageFeedback();
   initFrontend(document);
   initCookies();
   document.querySelectorAll<HTMLFormElement>("form.app-vote").forEach(initVote);

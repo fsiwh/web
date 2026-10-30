@@ -23,6 +23,7 @@ func (c *Handler) routes() http.Handler {
 		router.Handle(pattern, c.validateRoute(c.withSession(policy, handler)))
 	}
 	registerPages(c, register)
+	forms(register, "/feedback", routePolicy{session: true, csrf: true, bodyLimit: 16 << 10}, c.PageFeedback)
 	registerPosts(c, register)
 	registerEvents(c, register)
 	registerMedia(c, register)
@@ -58,12 +59,7 @@ func registerPages(c *Handler, register routeRegister) {
 			c.serverError(w, err)
 			return
 		}
-		albums, err := c.media.Carousel(r.Context())
-		if err != nil {
-			c.serverError(w, err)
-			return
-		}
-		c.render(w, "landing", false, view.Page{Title: "Startseite", Active: "home", Home: home, Media: view.MediaPage{Albums: mapRecords(albums, albumView)}})
+		c.render(w, "landing", false, view.Page{Title: "Startseite", Active: "home", Home: home})
 	})
 	register("GET "+urls.TeamPath, public, c.Team)
 	register("GET "+urls.SitemapPath, public, c.Sitemap)

@@ -270,6 +270,25 @@
       </div>
     </div>
     {{ end }}
+    {{ if ne .Active "feedback" }}
+    <section id="page-feedback" class="app-page-feedback" aria-label="Rückmeldung zu dieser Seite">
+      <div class="govuk-width-container">
+        <div class="app-page-feedback__prompt">
+          <form action="/feedback" method="get" class="app-page-feedback__question" data-page-feedback>
+            <input type="hidden" name="path" value="{{ .Feedback.Path }}" />
+            <p>Ist diese Seite hilfreich?</p>
+            <button type="submit" name="value" value="yes">Ja<span class="govuk-visually-hidden">, diese Seite ist hilfreich</span></button>
+            <button type="submit" name="value" value="no">Nein<span class="govuk-visually-hidden">, diese Seite ist nicht hilfreich</span></button>
+          </form>
+          <form action="/feedback" method="get" class="app-page-feedback__report" data-page-feedback>
+            <input type="hidden" name="path" value="{{ .Feedback.Path }}" />
+            <button type="submit" name="value" value="problem">Ein Problem mit dieser Seite melden</button>
+          </form>
+        </div>
+        <div class="app-page-feedback__panel" hidden></div>
+      </div>
+    </section>
+    {{ end }}
     <footer class="govuk-footer">
       <div class="govuk-width-container">
         <div class="govuk-footer__meta">

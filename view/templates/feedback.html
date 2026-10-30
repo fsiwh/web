@@ -1,0 +1,50 @@
+{{ define "sidebar" }}{{ end }}
+{{ define "content" }}
+  <div data-feedback-result>
+    {{ if eq .Feedback.Value "no" }}
+      <h2 class="govuk-heading-m" tabindex="-1">Hilf uns, {{ .Organization.ShortName }} zu verbessern</h2>
+      <p class="govuk-body">
+        Um unsere Website zu verbessern, möchten wir mehr über deinen heutigen Besuch erfahren.
+        Bitte <a class="govuk-link" href="/feedback?value=problem&amp;path={{ .Feedback.Path }}" target="_blank" rel="noopener">fülle unser Feedbackformular aus (öffnet sich in einem neuen Tab)</a>.
+      </p>
+      <form action="/feedback" method="post">
+        <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+        <input type="hidden" name="path" value="{{ .Feedback.Path }}" />
+        <input type="hidden" name="value" value="no" />
+        <button class="govuk-button govuk-button--secondary app-feedback-cancel" type="submit" name="cancel" value="1" formnovalidate data-feedback-cancel>Abbrechen</button>
+      </form>
+    {{ else if .Feedback.Sent }}
+      <h2 class="govuk-heading-m" tabindex="-1" data-feedback-thanks>Danke für deine Rückmeldung.</h2>
+      <p class="govuk-body"><a class="govuk-link" href="{{ .Feedback.Path }}">Zurück zur Seite</a></p>
+    {{ else }}
+      <form action="/feedback" method="post" data-feedback-form>
+        <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+        <input type="hidden" name="path" value="{{ .Feedback.Path }}" />
+        <input type="hidden" name="value" value="{{ .Feedback.Value }}" />
+        {{ if .Feedback.Error }}
+          <div class="govuk-error-summary" role="alert" tabindex="-1">
+            <h2 class="govuk-error-summary__title">Es gibt ein Problem</h2>
+            <p class="govuk-body">{{ .Feedback.Error }}</p>
+          </div>
+        {{ end }}
+        {{ if eq .Feedback.Value "problem" }}
+          <h2 class="govuk-heading-m" tabindex="-1">Ein Problem mit dieser Seite melden</h2>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="feedback-expected">Was wolltest du tun?</label>
+            <textarea class="govuk-textarea" id="feedback-expected" name="expected" rows="3" maxlength="2000" required>{{ .Feedback.Expected }}</textarea>
+          </div>
+          <div class="govuk-form-group">
+            <label class="govuk-label" for="feedback-actual">Was ist passiert?</label>
+            <textarea class="govuk-textarea" id="feedback-actual" name="actual" rows="3" maxlength="2000" required>{{ .Feedback.Actual }}</textarea>
+          </div>
+        {{ else }}
+          <p class="govuk-body">Ist diese Seite hilfreich? <strong>{{ if eq .Feedback.Value "yes" }}Ja{{ else }}Nein{{ end }}</strong></p>
+        {{ end }}
+        <div class="govuk-button-group">
+          <button class="govuk-button" type="submit">Absenden</button>
+          <button class="govuk-button govuk-button--secondary app-feedback-cancel" type="submit" name="cancel" value="1" formnovalidate data-feedback-cancel>Abbrechen</button>
+        </div>
+      </form>
+    {{ end }}
+  </div>
+{{ end }}

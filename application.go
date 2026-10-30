@@ -100,6 +100,7 @@ func newApplication(ctx context.Context, databasePath, blobPath string) (_ *appl
 	}
 	auditStore := audit.NewStore(db)
 	app.handler, err = site.New(site.Services{
+		FeedbackMail:  email.NewSender(cfg, org),
 		Audit:         auditStore,
 		BuildVersion:  buildVersion,
 		BuildRevision: Revision,
