@@ -35,7 +35,7 @@ func (c *Handler) PageFeedback(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && r.PostForm.Get("cancel") == "1" {
 		target := f.Path
 		// Validate the final serialized target as well as the parsed path above.
-		if !strings.HasPrefix(target, "/") || strings.HasPrefix(target, "//") {
+		if len(target) < 2 || target[0] != '/' || target[1] == '/' || target[1] == '\\' {
 			target = "/"
 		}
 		http.Redirect(w, r, target, http.StatusSeeOther)
