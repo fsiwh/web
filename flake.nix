@@ -25,7 +25,7 @@
           # renovate: datasource=npm depName=tinymce
           tinymceVersion = "8.10.1";
           # renovate: datasource=npm depName=tinymce-i18n
-          languageVersion = "26.10.19";
+          languageVersion = "26.10.26";
           # renovate: datasource=git-refs depName=https://github.com/alphagov/govspeak-visual-editor
           iconsRevision = "cf09bfaed71624e789de655283f2a942bc3ca87b";
           # renovate: datasource=git-refs depName=https://github.com/alphagov/govuk-design-system
@@ -49,7 +49,7 @@
           };
           language = pkgs.fetchurl {
             url = "https://registry.npmjs.org/tinymce-i18n/-/tinymce-i18n-${languageVersion}.tgz";
-            hash = "sha256-+ffkCojl+AHPf5qyxA/jxHeM3ExVKBUbe+1smhHeCXY=";
+            hash = "sha256-qHrlFuEZvtmYtWxFtTLCvH7hpOLW+xs1oX4Eox7GEn4=";
           };
           icons = pkgs.fetchurl {
             name = "govspeak-visual-editor-${iconsRevision}.tar.gz";
