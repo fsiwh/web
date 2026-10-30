@@ -35,10 +35,11 @@ func (c *Handler) PageFeedback(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && r.PostForm.Get("cancel") == "1" {
 		target := f.Path
 		// Validate the final serialized target as well as the parsed path above.
-		if len(target) < 2 || target[0] != '/' || target[1] == '/' || target[1] == '\\' {
-			target = "/"
+		if isLocalURL(target) {
+			http.Redirect(w, r, target, http.StatusSeeOther)
+			return
 		}
-		http.Redirect(w, r, target, http.StatusSeeOther)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 	if r.Method == http.MethodPost {
@@ -63,4 +64,10 @@ func (c *Handler) PageFeedback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	c.renderStatus(w, "feedback", false, view.Page{Title: "Rückmeldung zu dieser Seite", Active: "feedback", Feedback: f}, status)
+}
+
+// isLocalURL accepts only root-relative redirects on this origin. Browsers also
+// treat a backslash after the first slash as an external authority separator.
+func isLocalURL(target string) bool {
+	return target == "/" || (len(target) > 1 && target[0] == '/' && target[1] != '/' && target[1] != '\\' && !strings.ContainsAny(target, "\\\r\n\t"))
 }
