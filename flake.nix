@@ -23,7 +23,7 @@
           # renovate: datasource=npm depName=htmx.org
           htmxVersion = "2.0.11";
           # renovate: datasource=npm depName=tinymce
-          tinymceVersion = "8.10.0";
+          tinymceVersion = "8.10.1";
           # renovate: datasource=npm depName=tinymce-i18n
           languageVersion = "26.10.19";
           # renovate: datasource=git-refs depName=https://github.com/alphagov/govspeak-visual-editor
@@ -45,7 +45,7 @@
           };
           tinymce = pkgs.fetchurl {
             url = "https://registry.npmjs.org/tinymce/-/tinymce-${tinymceVersion}.tgz";
-            hash = "sha256-yCfom0e+9PAuKJLaM19UCSU1n3VGeQWOajDLsEmUba4=";
+            hash = "sha256-CuRMWOxOgWUvcnCSqm/HLX+0hORS5fGRYNNWNNXPRk0=";
           };
           language = pkgs.fetchurl {
             url = "https://registry.npmjs.org/tinymce-i18n/-/tinymce-i18n-${languageVersion}.tgz";
