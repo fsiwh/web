@@ -32,6 +32,76 @@
             </a>
           </div>
         </div>
+        <div>
+          {{ $albums := .Media.CarouselAlbums }}
+          {{ if $albums }}
+            <section class="app-event-carousel" aria-label="Bilder aus der Fachschaft">
+              <div class="app-event-carousel__controls" hidden>
+                <button
+                  class="app-event-carousel__button app-event-carousel__rotation"
+                  type="button"
+                  aria-controls="event-slides"
+                  aria-label="Diashow starten"
+                  data-rotation
+                >
+                  Starten
+                </button>
+                <button
+                  class="app-event-carousel__button"
+                  type="button"
+                  aria-controls="event-slides"
+                  aria-label="Vorheriges Bild"
+                  data-direction="-1"
+                >
+                  <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <path d="m12 4-6 6 6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <div class="app-event-carousel__dots" role="group" aria-label="Bild auswählen">
+                  {{ range $index, $album := $albums }}
+                    <button
+                      class="app-event-carousel__dot"
+                      type="button"
+                      aria-controls="event-slides"
+                      aria-label="{{ .CoverImage.Title }} anzeigen"
+                      {{ if not $index }}aria-disabled="true"{{ end }}
+                      data-slide="{{ $index }}"
+                    ></button>
+                  {{ end }}
+                </div>
+                <button
+                  class="app-event-carousel__button"
+                  type="button"
+                  aria-controls="event-slides"
+                  aria-label="Nächstes Bild"
+                  data-direction="1"
+                >
+                  <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <path d="m8 4 6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+                <span class="govuk-visually-hidden" role="status" aria-atomic="true">1 von {{ len $albums }}</span>
+              </div>
+              <div id="event-slides">
+                {{ range $index, $album := $albums }}
+                  {{ $cover := .CoverImage }}
+                  <div class="app-event-slide" data-title="{{ $cover.Title }}" {{ if $index }}hidden{{ end }}>
+                    <a class="govuk-link govuk-link--inverse app-event-carousel__link" href="{{ .URL }}">
+                      <img
+                        class="app-event-carousel__image"
+                        src="{{ $cover.Source }}"
+                        {{ if $cover.Width }}width="{{ $cover.Width }}" height="{{ $cover.Height }}"{{ end }}
+                        alt=""
+                        {{ if $index }}loading="lazy"{{ else }}fetchpriority="high"{{ end }}
+                        decoding="async"
+                      /><span class="govuk-visually-hidden">Fotoalbum ansehen: {{ .Title }}</span>
+                    </a>
+                  </div>
+                {{ end }}
+              </div>
+            </section>
+          {{ end }}
+        </div>
       </div>
     </div>
   </div>

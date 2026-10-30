@@ -14,7 +14,7 @@
         <button class="govuk-button govuk-button--secondary app-feedback-cancel" type="submit" name="cancel" value="1" formnovalidate data-feedback-cancel>Abbrechen</button>
       </form>
     {{ else if .Feedback.Sent }}
-      <h2 class="govuk-heading-m" tabindex="-1" data-feedback-thanks>Danke für deine Rückmeldung.</h2>
+      <h2 class="govuk-heading-m" tabindex="-1" data-feedback-thanks>Vielen Dank für deine Rückmeldung.</h2>
       <p class="govuk-body"><a class="govuk-link" href="{{ .Feedback.Path }}">Zurück zur Seite</a></p>
     {{ else }}
       <form action="/feedback" method="post" data-feedback-form>
