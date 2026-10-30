@@ -11,7 +11,7 @@ require (
 	github.com/yuin/goldmark/v2 v2.1.11
 	golang.org/x/crypto v0.58.0
 	golang.org/x/image v0.47.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	modernc.org/sqlite v1.61.0
 )
 
