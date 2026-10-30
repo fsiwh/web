@@ -290,7 +290,6 @@
 
 .app-masthead__title,
 .app-masthead__description {
-  max-width: 40ch;
   color: #fff;
 }
 
@@ -612,6 +611,13 @@
 
 @media (max-width: 48.0524em) {
   .app-event-carousel { max-width: 560px; margin-inline: auto; }
+}
+
+@media (min-width: 48.0625em) {
+  .app-masthead__layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.618fr);
+    gap: 30px;
+  }
 }
 
 @media (min-width: 48.0625em) {

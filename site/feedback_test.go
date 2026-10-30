@@ -57,14 +57,14 @@ func TestPageFeedback(t *testing.T) {
 		t.Fatalf("CSRF: %d, calls %d", w.Code, mail.calls)
 	}
 	values.Set("csrf", token[1])
-	if w := post(values); w.Code != 200 || !strings.Contains(w.Body.String(), "Danke für deine Rückmeldung.") {
+	if w := post(values); w.Code != 200 || !strings.Contains(w.Body.String(), "Vielen Dank für deine Rückmeldung.") {
 		t.Fatalf("vote: %d %s", w.Code, w.Body.String())
 	}
 	if mail.calls != 1 || mail.path != "/team" || mail.value != "yes" {
 		t.Fatalf("vote delivery: %+v", mail)
 	}
 	values.Set("value", "no")
-	if w := post(values); w.Code != 200 || mail.value != "no" || !strings.Contains(w.Body.String(), "Hilf uns,") || !strings.Contains(w.Body.String(), `target="_blank"`) || strings.Contains(w.Body.String(), "Danke für deine Rückmeldung.") {
+	if w := post(values); w.Code != 200 || mail.value != "no" || !strings.Contains(w.Body.String(), "Hilf uns,") || !strings.Contains(w.Body.String(), `target="_blank"`) || strings.Contains(w.Body.String(), "Vielen Dank für deine Rückmeldung.") {
 		t.Fatalf("negative vote: %d", w.Code)
 	}
 	values.Set("cancel", "1")
@@ -88,7 +88,7 @@ func TestPageFeedback(t *testing.T) {
 	values.Set("actual", "Broken link")
 	values.Set("path", "https://example.com/evil")
 	mail.err = errors.New("SMTP unavailable")
-	if w := post(values); w.Code != 500 || strings.Contains(w.Body.String(), "Danke für deine Rückmeldung.") || mail.path != "/" {
+	if w := post(values); w.Code != 500 || strings.Contains(w.Body.String(), "Vielen Dank für deine Rückmeldung.") || mail.path != "/" {
 		t.Fatalf("mail failure: %d", w.Code)
 	}
 }
