@@ -126,6 +126,7 @@ type Page struct {
 	RegistrationDomains, AccountDomains, ChairEmail, PublicityEmail string
 	Title, Active                                                   string
 	DocumentTitle                                                   string
+	Description                                                     string
 	Message                                                         string
 	Legal                                                           LegalPage
 	Community                                                       bool

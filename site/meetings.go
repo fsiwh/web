@@ -227,6 +227,7 @@ func (c *Handler) Meetings(w http.ResponseWriter, r *http.Request) {
 	}
 	c.render(w, "content", false, view.Page{
 		Title: "Sitzungen und Protokolle", Active: "meetings", About: true,
-		Meetings: view.MeetingsPage{Year: year, Years: years, Meetings: mapRecords(records, meetingView), Next: nextMeeting},
+		Description: "Informiere dich über unsere Sitzungen und lies nach, womit sich die Fachschaftsvertretung beschäftigt.",
+		Meetings:    view.MeetingsPage{Year: year, Years: years, Meetings: mapRecords(records, meetingView), Next: nextMeeting},
 	})
 }

@@ -133,7 +133,7 @@ func (c *Handler) Team(w http.ResponseWriter, r *http.Request) {
 		c.serverError(w, err)
 		return
 	}
-	c.render(w, "team", false, view.Page{Title: "Mitglieder", Active: "team", About: true, Team: mapRecords(c.members.Groups(), teamGroupView)})
+	c.render(w, "team", false, view.Page{Title: "Mitglieder", Active: "team", About: true, Description: "Lerne die Mitglieder der Fachschaftsvertretung kennen und finde die passende Ansprechperson.", Team: mapRecords(c.members.Groups(), teamGroupView)})
 }
 
 func (c *Handler) EditPublicUser(w http.ResponseWriter, r *http.Request) {

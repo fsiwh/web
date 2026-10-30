@@ -1,5 +1,6 @@
 {{ define "sidebar" }}{{ end }}
 {{ define "content" }}
+  <p class="govuk-body-l">Lerne die Mitglieder der Fachschaftsvertretung kennen und finde die passende Ansprechperson.</p>
   {{ range .Team }}
     <section aria-labelledby="team-{{ .ID }}">
       <h2 class="govuk-heading-m" id="team-{{ .ID }}">{{ .Title }}</h2>
