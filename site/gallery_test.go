@@ -58,8 +58,8 @@ INSERT INTO media(id,event_id,user_id,title,access_key,mime_type,nbytes,created_
 	if w := request("GET", "/media/manage", staff, nil); w.Code != 200 || !strings.Contains(w.Body.String(), "Auf der Startseite anzeigen") {
 		t.Fatalf("staff management: %d %s", w.Code, w.Body.String())
 	}
-	if w := request("GET", "/", nil, nil); w.Code != 200 || !strings.Contains(w.Body.String(), `/images/`+photo+`/1200`) {
-		t.Fatalf("selected homepage image missing: %d", w.Code)
+	if w := request("GET", "/", nil, nil); w.Code != 200 || strings.Contains(w.Body.String(), "app-event-carousel") {
+		t.Fatalf("homepage must render without a gallery slideshow: %d", w.Code)
 	}
 	path := "/media/" + photo + "/visibility"
 	if w := request("POST", path, staff, url.Values{"page": {"1"}, "csrf": {"invalid"}}); w.Code != 403 {

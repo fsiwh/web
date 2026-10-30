@@ -118,6 +118,7 @@ type LegalPage struct {
 const NewsURL = "/news"
 
 type Page struct {
+	Feedback                                                        FeedbackPage
 	BuildVersion                                                    string
 	BuildRevision                                                   string
 	CanonicalURL                                                    string

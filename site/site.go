@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -57,6 +58,7 @@ func (c *Handler) pageError(w http.ResponseWriter, message string, status int) {
 }
 
 type Handler struct {
+	feedbackMail  PageFeedbackSender
 	buildVersion  string
 	buildRevision string
 	organization  *organization.Store
@@ -74,6 +76,7 @@ type Handler struct {
 }
 
 type Services struct {
+	FeedbackMail  PageFeedbackSender
 	BuildVersion  string
 	BuildRevision string
 	Organization  *organization.Store
@@ -96,7 +99,7 @@ func New(services Services, secureCookies bool) (*Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &Handler{buildVersion: services.BuildVersion, buildRevision: services.BuildRevision, views: views, secureCookies: secureCookies, organization: services.Organization,
+	c := &Handler{feedbackMail: services.FeedbackMail, buildVersion: services.BuildVersion, buildRevision: services.BuildRevision, views: views, secureCookies: secureCookies, organization: services.Organization,
 		identity: services.Users, exams: services.Exams, members: services.Members,
 		meetings: services.Meetings, posts: services.Posts, media: services.Media, events: services.Events, audit: services.Audit}
 	c.router = c.routes()
@@ -132,6 +135,11 @@ func (c *Handler) renderStatus(w http.ResponseWriter, page string, fragment bool
 	}
 	if c.organization != nil {
 		data.Organization = organizationView(c.organization.Current())
+	}
+	if data.Feedback.Path == "" {
+		if u, err := url.Parse(data.CanonicalURL); err == nil {
+			data.Feedback.Path = u.EscapedPath()
+		}
 	}
 	if c.identity != nil {
 		domains := c.identity.Domains()

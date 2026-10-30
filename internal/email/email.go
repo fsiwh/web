@@ -119,6 +119,23 @@ func (s *Sender) notify(to string, n notification) error {
 	return nil
 }
 
+func (s *Sender) SendPageFeedback(path, value, expected, actual string) error {
+	if s.cfg.SMTPHost == "" {
+		return fmt.Errorf("SMTP is not configured")
+	}
+	answer := map[string]string{"yes": "Ja", "no": "Nein", "problem": "Problemmeldung"}[value]
+	n := notification{
+		Name: "Fachschaft", Title: "Website-Rückmeldung: " + answer,
+		Intro:  "Seite: " + path + "\nRückmeldung: " + answer,
+		Action: "Seite ansehen", Link: s.cfg.Domain + path,
+	}
+	if value == "problem" {
+		n.Validity = "Was wolltest du tun?\n" + expected
+		n.Note = "Was ist passiert?\n" + actual
+	}
+	return s.notify(s.organization.Current().ContactEmail, n)
+}
+
 func (s *Sender) message(to string, n notification) ([]byte, error) {
 	if s.organization != nil {
 		n.Organization = s.organization.Current()

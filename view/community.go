@@ -105,7 +105,6 @@ func HomeItem(p Post) HomePost {
 }
 
 type HomePage struct {
-	News   HomePost
 	Posts  []HomePost
 	Events []Event
 }

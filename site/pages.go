@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fachschaftinformatik/web/model/events"
 	"github.com/fachschaftinformatik/web/model/meetings"
 	"github.com/fachschaftinformatik/web/model/posts"
 	"github.com/fachschaftinformatik/web/view"
@@ -16,30 +15,18 @@ import (
 const uploadBodyLimit = meetings.MaxPDFBytes + 1<<20
 
 func (c *Handler) home(ctx context.Context, viewer ...int64) (view.HomePage, error) {
-	var upcoming []events.Event
-
-	calendar, _, err := c.events.FindPage(ctx, time.Now(), 1, 3, true)
+	calendar, _, err := c.events.FindPage(ctx, time.Now(), 1, 4, false)
 	if err != nil {
 		return view.HomePage{}, err
 	}
-	upcoming, _ = events.Group(calendar, time.Now())
-	upcoming = upcoming[:min(3, len(upcoming))]
 
 	records, _, err := c.posts.FindPage(ctx, posts.Filter{Type: "discussion"}, 1, 2, viewer...)
 	if err != nil {
 		return view.HomePage{}, err
 	}
-	page := view.HomePage{Events: mapRecords(upcoming, eventView)}
-	news, _, err := c.posts.FindPage(ctx, posts.Filter{Type: "news"}, 1, 1, viewer...)
-	if err != nil {
-		return view.HomePage{}, err
-	}
-	records = append(records, news...)
+	page := view.HomePage{Events: mapRecords(calendar, eventView)}
 	for _, post := range records {
 		item := view.HomeItem(postView(post))
-		if post.Type == "news" && page.News.URL == "" {
-			page.News = item
-		}
 		if post.Type == "discussion" && len(page.Posts) < 2 {
 			page.Posts = append(page.Posts, item)
 		}
