@@ -71,6 +71,13 @@ func TestPageFeedback(t *testing.T) {
 	if w := post(values); w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/team" || mail.calls != 2 {
 		t.Fatalf("cancel: %d, calls %d", w.Code, mail.calls)
 	}
+	for _, path := range []string{"https://evil.example/path", "//evil.example/path", "/%2fevil.example", `/\evil.example`, `/%5cevil.example`, "/%0d%0aLocation:evil", "/%09/evil.example"} {
+		values.Set("path", path)
+		if w := post(values); w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/" || mail.calls != 2 {
+			t.Fatalf("unsafe cancel path %q: %d %q", path, w.Code, w.Header().Get("Location"))
+		}
+	}
+	values.Set("path", "/team?private=secret")
 	values.Del("cancel")
 	values.Set("value", "problem")
 	if w := post(values); w.Code != 422 || mail.calls != 2 {

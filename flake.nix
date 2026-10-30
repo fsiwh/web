@@ -23,13 +23,13 @@
           # renovate: datasource=npm depName=htmx.org
           htmxVersion = "2.0.11";
           # renovate: datasource=npm depName=tinymce
-          tinymceVersion = "8.10.0";
+          tinymceVersion = "8.10.1";
           # renovate: datasource=npm depName=tinymce-i18n
-          languageVersion = "26.10.19";
+          languageVersion = "26.10.26";
           # renovate: datasource=git-refs depName=https://github.com/alphagov/govspeak-visual-editor
           iconsRevision = "cf09bfaed71624e789de655283f2a942bc3ca87b";
           # renovate: datasource=git-refs depName=https://github.com/alphagov/govuk-design-system
-          communityRevision = "83ef3622ff74d47170d642ea7811e4ea4a440ef9";
+          communityRevision = "cafbeeac22fcbaadd0112d90c777322e31cd439c";
 
           govuk = pkgs.fetchurl {
             url = "https://registry.npmjs.org/govuk-frontend/-/govuk-frontend-${govukVersion}.tgz";
@@ -45,11 +45,11 @@
           };
           tinymce = pkgs.fetchurl {
             url = "https://registry.npmjs.org/tinymce/-/tinymce-${tinymceVersion}.tgz";
-            hash = "sha256-yCfom0e+9PAuKJLaM19UCSU1n3VGeQWOajDLsEmUba4=";
+            hash = "sha256-CuRMWOxOgWUvcnCSqm/HLX+0hORS5fGRYNNWNNXPRk0=";
           };
           language = pkgs.fetchurl {
             url = "https://registry.npmjs.org/tinymce-i18n/-/tinymce-i18n-${languageVersion}.tgz";
-            hash = "sha256-+ffkCojl+AHPf5qyxA/jxHeM3ExVKBUbe+1smhHeCXY=";
+            hash = "sha256-qHrlFuEZvtmYtWxFtTLCvH7hpOLW+xs1oX4Eox7GEn4=";
           };
           icons = pkgs.fetchurl {
             name = "govspeak-visual-editor-${iconsRevision}.tar.gz";
@@ -59,7 +59,7 @@
           community = pkgs.fetchurl {
             name = "govuk-design-system-${communityRevision}.tar.gz";
             url = "https://codeload.github.com/alphagov/govuk-design-system/tar.gz/${communityRevision}";
-            hash = "sha256-Kqcr2pHN8KcIjX26hUgCNO6o+d+5mF7Ng050t95tb+o=";
+            hash = "sha256-JihBlcgS0bC/nt3FjiYdeUuxAAuj7fWY5wLVrO8TmjU=";
           };
           assets = pkgs.stdenvNoCC.mkDerivation {
             pname = "web-browser-assets";
@@ -137,7 +137,7 @@
             pname = "web";
             version = revision;
             src = pkgs.lib.cleanSource ./.;
-            vendorHash = "sha256-UQRUQloi+eluKQ8Y/cpOpCKtE6CJ+KbKRlnd5rwKlB0=";
+            vendorHash = "sha256-ZXBf41JgovGyDEzu7KerJQq4+wiOqY31NC1lIgLGIPc=";
             overrideModAttrs = _: {
               name = "web-go-modules";
               preBuild = "";
