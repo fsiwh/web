@@ -341,6 +341,55 @@
   background: #fff;
 }
 
+.app-home-latest {
+  border-top: 5px solid #1d70b8;
+  margin-bottom: 30px;
+}
+
+.app-home-latest__heading {
+  margin: 0 0 15px;
+  padding: 15px 0;
+}
+
+.app-home-latest__list {
+  margin: 0 0 15px;
+}
+
+.app-home-latest__list > li {
+  border-top: 1px solid #cecece;
+  margin: 25px 0 0;
+  padding: 10px 0 0;
+}
+
+.app-home-latest__list > li:first-child {
+  margin-top: 0;
+}
+
+.app-home-latest__title {
+  font-size: 19px;
+  line-height: 25px;
+  margin: 0 0 5px;
+}
+
+.app-home-latest__metadata {
+  color: #484949;
+  font-size: 16px;
+  line-height: 20px;
+  margin: 0;
+}
+
+.app-home-latest__all {
+  font-size: 19px;
+  line-height: 25px;
+  margin-bottom: 30px;
+}
+
+@media (min-width: 40.0625em) {
+  .app-home-latest__list {
+    margin-bottom: 25px;
+  }
+}
+
 .app-home-organisation {
   margin-top: 30px;
   margin-bottom: 30px;

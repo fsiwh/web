@@ -25,6 +25,13 @@ func (c *Handler) home(ctx context.Context, viewer ...int64) (view.HomePage, err
 		return view.HomePage{}, err
 	}
 	page := view.HomePage{Events: mapRecords(calendar, eventView)}
+	announcements, _, err := c.posts.FindPage(ctx, posts.Filter{Type: "news"}, 1, 3, viewer...)
+	if err != nil {
+		return view.HomePage{}, err
+	}
+	for _, post := range announcements {
+		page.Announcements = append(page.Announcements, view.HomeItem(postView(post)))
+	}
 	for _, post := range records {
 		item := view.HomeItem(postView(post))
 		if post.Type == "discussion" && len(page.Posts) < 2 {

@@ -144,49 +144,39 @@
     </div>
   </div>
   <div class="govuk-width-container govuk-main-wrapper govuk-main-wrapper--l">
-    <div class="app-home-services">
-      <section aria-labelledby="home-archive">
-        <h2 class="govuk-heading-l" id="home-archive">Lernmaterial</h2>
-        <p class="govuk-body">
-          Finde Lernmaterial für deine Prüfungsvorbereitung – passend zu Modul, Studiengang und
-          Prüfungsordnung.
-        </p>
-        <p class="govuk-body">
-          <a class="govuk-link govuk-!-font-weight-bold" href="/exams">Lernmaterial finden</a>
-        </p>
-      </section>
-      <section aria-labelledby="home-exchange">
-        <h2 class="govuk-heading-l" id="home-exchange">Forum</h2>
-        <p class="govuk-body">
-          Fragen zu Prüfungen oder zur Abschlussarbeit? Teile deine Erfahrungen und tausche dich mit
-          anderen Studierenden aus.
-        </p>
-        <p class="govuk-body">
-          <a class="govuk-link govuk-!-font-weight-bold" href="/posts">Zum Forum</a>
-        </p>
-      </section>
-      <section aria-labelledby="home-team">
-        <h2 class="govuk-heading-l" id="home-team">Über uns</h2>
-        <p class="govuk-body">
-          Erfahre, wer deine Interessen vertritt, was die Fachschaft organisiert und wie du
-          mitmachen kannst.
-        </p>
-        <p class="govuk-body">
-          <a class="govuk-link govuk-!-font-weight-bold" href="/about"
-            >Die Fachschaft kennenlernen</a
-          >
-        </p>
-      </section>
-    </div>
-    <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible" />
-    <section class="govuk-grid-row" aria-labelledby="home-forum">
-      <div class="govuk-grid-column-two-thirds-from-desktop">
-        <h2 class="govuk-heading-l" id="home-forum">Aus dem Forum</h2>
+    <section class="app-home-latest" aria-labelledby="home-announcements">
+      <h2 class="govuk-heading-m app-home-latest__heading" id="home-announcements">Ankündigungen</h2>
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-two-thirds">
+          {{ if .Home.Announcements }}
+            <ul class="govuk-list app-home-latest__list" role="list">
+              {{ range .Home.Announcements }}
+                <li>
+                  <h3 class="govuk-heading-s app-home-latest__title">
+                    <a class="govuk-link" href="{{ .URL }}">{{ .Title }}</a>
+                  </h3>
+                  <p class="govuk-body-s app-home-latest__metadata">
+                    <span class="govuk-visually-hidden">Veröffentlicht am </span><time datetime="{{ .DateISO }}">{{ .Date }}</time>
+                  </p>
+                </li>
+              {{ end }}
+            </ul>
+          {{ else }}
+            <p class="govuk-body">Noch keine Ankündigungen veröffentlicht.</p>
+          {{ end }}
+          <p class="govuk-body app-home-latest__all"><a class="govuk-link" href="/news">Alle Ankündigungen</a></p>
+        </div>
+      </div>
+    </section>
+    <section class="app-home-latest" aria-labelledby="home-forum">
+      <h2 class="govuk-heading-m app-home-latest__heading" id="home-forum">Aktuelle Beiträge</h2>
+      <div class="govuk-grid-row">
+        <div class="govuk-grid-column-two-thirds">
         {{ if .Home.Posts }}
-          <ul class="govuk-list app-posts-list" role="list">
+          <ul class="govuk-list app-home-latest__list" role="list">
             {{ range .Home.Posts }}
               <li>
-                <h3 class="govuk-heading-s govuk-!-margin-bottom-2">
+                <h3 class="govuk-heading-s app-home-latest__title">
                   <a class="govuk-link" href="{{ .URL }}">{{ .Title }}</a>
                 </h3>
                 {{ if .Summary }}
@@ -194,9 +184,8 @@
                 {{ end }}
                 <div class="app-post-meta">
                   {{ template "vote" (voteControl $ .VoteURL "/#home-forum" .Title .Votes .UserVote) }}
-                  <p class="govuk-body-s govuk-!-margin-bottom-0">
-                    <span class="govuk-visually-hidden">Veröffentlicht am </span
-                    ><time datetime="{{ .DateISO }}">{{ .Date }}</time>
+                  <p class="govuk-body-s app-home-latest__metadata">
+                    <span class="govuk-visually-hidden">Veröffentlicht am </span><time datetime="{{ .DateISO }}">{{ .Date }}</time>
                   </p>
                 </div>
               </li>
@@ -205,7 +194,8 @@
         {{ else }}
           <p class="govuk-body">Noch keine Themen veröffentlicht.</p>
         {{ end }}
-        <p class="govuk-body"><a class="govuk-link" href="/posts">Alle Themen im Forum</a></p>
+        <p class="govuk-body app-home-latest__all"><a class="govuk-link" href="/posts">Alle Beiträge im Forum</a></p>
+        </div>
       </div>
     </section>
     <section class="app-home-organisation app-home-about" aria-labelledby="home-what-we-do">
