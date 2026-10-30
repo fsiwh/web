@@ -42,7 +42,7 @@ func (c *Handler) Events(w http.ResponseWriter, r *http.Request) {
 	page.Upcoming, page.Past = mapRecords(upcoming, eventView), mapRecords(past, eventView)
 	page.Pagination = listPagination(r, total, eventsPageSize)
 
-	c.render(w, "events", false, view.Page{Title: "Veranstaltungen", Active: "events", Community: true, Events: page})
+	c.render(w, "events", false, view.Page{Title: "Veranstaltungen", Active: "events", Community: true, Description: "Entdecke die nächsten Veranstaltungen der Fachschaft Informatik.", Events: page})
 }
 
 func (c *Handler) EditEvent(w http.ResponseWriter, r *http.Request) {

@@ -75,11 +75,15 @@ func registerPages(c *Handler, register routeRegister) {
 		register("GET "+path, public, c.Legal)
 	}
 	register("GET "+urls.ContactPath, public, func(w http.ResponseWriter, r *http.Request) {
-		c.render(w, "contact", false, view.Page{Title: "Kontakt", Active: "contact"})
+		c.render(w, "contact", false, view.Page{Title: "Kontakt", Active: "contact", Description: "So erreichst du uns per E-Mail oder persönlich im Fachschaftsbüro."})
 	})
-	for _, page := range []struct{ path, title, template string }{{urls.AboutPath, "Über uns", "about"}, {urls.ElectionsPath, "Wahlen", "elections"}, {urls.RegulationsPath, "Satzung und Ordnungen", "regulations"}} {
+	for _, page := range []struct{ path, title, template string }{{urls.AboutPath, "Über die Fachschaft", "about"}, {urls.ElectionsPath, "Wahlen", "elections"}, {urls.RegulationsPath, "Satzung und Ordnungen", "regulations"}} {
 		register("GET "+page.path, public, func(w http.ResponseWriter, r *http.Request) {
-			c.render(w, page.template, false, view.Page{Title: page.title, Active: page.template, About: true})
+			var description string
+			if page.template == "about" {
+				description = "Wir vertreten deine Interessen im Informatikstudium, helfen bei Fragen und organisieren Veranstaltungen."
+			}
+			c.render(w, page.template, false, view.Page{Title: page.title, Active: page.template, About: true, Description: description})
 		})
 	}
 	register("GET "+urls.MeetingsPath, public, c.Meetings)

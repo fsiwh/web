@@ -12,6 +12,9 @@
       {{ if .DocumentTitle }}{{ .DocumentTitle }}{{ else }}{{ .Title }}{{ end }}
       · {{ .Organization.Name }}
     </title>
+    {{ if .Description }}
+    <meta name="description" content="{{ .Description }}" />
+    {{ end }}
     {{ if .CanonicalURL }}
     <link rel="canonical" href="{{ .CanonicalURL }}" />
     {{ end }}
@@ -420,7 +423,7 @@
         class="govuk-link govuk-link--no-visited-state govuk-link--no-underline"
         href="/team"
         aria-current="{{ if eq .Active `team` }}page{{ else }}false{{ end }}"
-        >Team</a
+        >Mitglieder</a
       >
       {{ if eq .Active "team" }}
       <ul class="govuk-list app-subnav app-subnav--nested">
