@@ -208,36 +208,100 @@
         <p class="govuk-body"><a class="govuk-link" href="/posts">Alle Themen im Forum</a></p>
       </div>
     </section>
-    <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible" />
-    <section class="govuk-grid-row" aria-labelledby="home-participate">
-      <div class="govuk-grid-column-two-thirds-from-desktop">
-        <h2 class="govuk-heading-l" id="home-participate">Mitmachen</h2>
-        <p class="govuk-body">
-          Du möchtest eine Veranstaltung mitorganisieren oder eine Idee fürs Studium einbringen?
-          Sprich uns an. In der Fachschaft kannst du dich auch neben den gewählten Ämtern
-          engagieren.
-        </p>
-        <p class="govuk-body">
-          <a class="govuk-link" href="/about">Mehr über die Fachschaft</a>
-        </p>
+    <section class="app-home-organisation app-home-about" aria-labelledby="home-what-we-do">
+      <h2 class="govuk-heading-m app-home-organisation__heading" id="home-what-we-do">Was wir tun</h2>
+      <div class="app-home-organisation__columns">
+        <div>
+          <p class="govuk-body">
+            Wir vertreten deine Interessen im Informatikstudium an unserer Hochschule.
+            Wir helfen bei Fragen rund ums Studium, organisieren
+            Veranstaltungen und schaffen Raum für Austausch und gemeinsame Projekte.
+          </p>
+          <p class="govuk-body">
+            Zur Fachschaft gehören alle Studierenden des Fachbereichs Informatik. Die gewählte
+            Fachschaftsvertretung (das sind wir) setzt sich für eure Anliegen ein.
+          </p>
+          <p class="govuk-body"><a class="govuk-link" href="/about">Mehr über unsere Aufgaben erfahren</a></p>
+        </div>
+        {{ if .Organization.SocialLinks }}
+          <section class="app-home-social" aria-labelledby="home-follow-us">
+            <h3 class="govuk-heading-s" id="home-follow-us">Folge uns</h3>
+            <p class="govuk-body-s">Die folgenden Links öffnen sich in einem neuen Tab.</p>
+            <ul class="govuk-list app-home-social__links">
+              {{ range .Organization.SocialLinks }}
+                <li>
+                  <a class="govuk-link govuk-link--no-underline" href="{{ .URL }}" target="_blank" rel="noopener noreferrer external">
+                    <span class="app-home-social__icon">{{ template "home-social-icon" . }}</span>
+                    <span>{{ .Title }}<span class="govuk-visually-hidden"> (öffnet sich in einem neuen Tab)</span></span>
+                  </a>
+                </li>
+              {{ end }}
+            </ul>
+          </section>
+        {{ end }}
       </div>
     </section>
-    <hr class="govuk-section-break govuk-section-break--xl govuk-section-break--visible" />
-    <section class="govuk-grid-row" aria-labelledby="home-contact">
-      <div class="govuk-grid-column-two-thirds-from-desktop">
-        <h2 class="govuk-heading-l" id="home-contact">Kontakt</h2>
-        <p class="govuk-body">
-          Du hast Fragen oder ein Anliegen?
-          <a class="govuk-link" href="/team">Finde die passende Ansprechperson</a> oder
-          <a class="govuk-link" href="/contact">schreib uns</a>.
-        </p>
+    <div class="app-home-organisation app-home-organisation__columns">
+      <div>
+        <section class="app-home-contact" aria-labelledby="home-contact">
+          <h2 class="govuk-heading-m app-home-organisation__heading app-home-organisation__heading--border" id="home-contact">Kontakt zur Fachschaft</h2>
+          <section class="app-home-contact__section" aria-labelledby="home-contact-general">
+            <h3 class="govuk-heading-s" id="home-contact-general">{{ .Organization.ShortName }}</h3>
+            <address class="govuk-body app-home-contact__address">
+              {{ .Organization.Institution }}<br />
+              {{ .Organization.Street }}<br />
+              {{ .Organization.PostalCode }} {{ .Organization.City }}<br />
+              {{ .Organization.Country }}
+              {{ if .Organization.Office }}<br />Raum {{ .Organization.Office }}{{ end }}
+            </address>
+            <p class="govuk-body app-home-contact__link"><a class="govuk-link" href="mailto:{{ .Organization.ContactEmail }}">{{ .Organization.ContactEmail }}</a></p>
+            <p class="govuk-body">Du hast Fragen zum Studium, brauchst Unterstützung oder möchtest etwas anregen? Schreib uns oder komm im Fachschaftsbüro vorbei.</p>
+          </section>
+          {{ if .ChairEmail }}
+            <section class="app-home-contact__section" aria-labelledby="home-contact-chair">
+              <h3 class="govuk-heading-s" id="home-contact-chair">Vorstand</h3>
+              <p class="govuk-body app-home-contact__link"><a class="govuk-link" href="mailto:{{ .ChairEmail }}">{{ .ChairEmail }}</a></p>
+              <p class="govuk-body">Der Vorstand ist deine Anlaufstelle für Anliegen an die Fachschaftsvertretung und Fragen zur Arbeit der Fachschaft.</p>
+            </section>
+          {{ end }}
+          {{ if .PublicityEmail }}
+            <section class="app-home-contact__section" aria-labelledby="home-contact-publicity">
+              <h3 class="govuk-heading-s" id="home-contact-publicity">Öffentlichkeitsarbeit</h3>
+              <p class="govuk-body app-home-contact__link"><a class="govuk-link" href="mailto:{{ .PublicityEmail }}">{{ .PublicityEmail }}</a></p>
+              <p class="govuk-body">Für Presseanfragen, Ankündigungen und Fragen zu unseren öffentlichen Kanälen erreichst du die Öffentlichkeitsarbeit.</p>
+            </section>
+          {{ end }}
+          <section class="app-home-contact__section" aria-labelledby="home-contact-team">
+            <h3 class="govuk-heading-s" id="home-contact-team">Ansprechpersonen und Zuständigkeiten</h3>
+            <p class="govuk-body app-home-contact__link"><a class="govuk-link" href="/team">Kontakt: Vorstand, Referate und Projektstellen</a></p>
+            <p class="govuk-body">Auf der Teamseite findest du die zuständigen Personen und ihre Kontaktmöglichkeiten für dein Anliegen.</p>
+          </section>
+        </section>
+        <section class="app-home-participate" aria-labelledby="home-participate">
+          <h2 class="govuk-heading-m app-home-organisation__heading app-home-organisation__heading--border" id="home-participate">Gestalte die Fachschaft mit</h2>
+          <ol class="govuk-list govuk-list--number">
+            <li>Informiere dich über unsere <a class="govuk-link" href="/meetings">Sitzungen und Protokolle</a> und bring deine Ideen ein.</li>
+            <li>Hilf bei einer <a class="govuk-link" href="/events">Veranstaltung</a> oder starte ein eigenes Projekt – auch ohne gewähltes Amt.</li>
+            <li>Bei den <a class="govuk-link" href="/elections">Wahlen zur Fachschaftsvertretung</a> kannst du mitentscheiden oder selbst kandidieren.</li>
+          </ol>
+          <p class="govuk-body"><a class="govuk-link" href="/contact">Sprich uns an, wenn du mitmachen möchtest</a>.</p>
+        </section>
       </div>
-    </section>
+      <aside class="app-home-information" aria-labelledby="home-information">
+        <h2 class="govuk-heading-m app-home-organisation__heading app-home-organisation__heading--border" id="home-information">Organisation und Informationen</h2>
+        <ul class="govuk-list govuk-list--spaced app-home-information__links">
+          <li><a class="govuk-link govuk-link--no-underline" href="/team">Mitglieder</a></li>
+          <li><a class="govuk-link govuk-link--no-underline" href="/meetings">Sitzungen und Protokolle</a></li>
+          <li><a class="govuk-link govuk-link--no-underline" href="/regulations">Satzung und Ordnungen</a></li>
+          <li><a class="govuk-link govuk-link--no-underline" href="/elections">Wahlen</a></li>
+        </ul>
+      </aside>
+    </div>
   </div>
 {{ end }}
 {{ define "home-event-context" }}
   <p class="govuk-body-s app-featured-context">
-    {{ if .EventDate }}<time datetime="{{ .EventDate }}">{{ .DateLabel }}</time><span aria-hidden="true"> — </span>{{ end }}Veranstaltung
+    {{ if .EventDate }}<time datetime="{{ .EventDate }}">{{ .DateLabel }}</time>{{ end }}
   </p>
   {{ if .StatusLabel }}
     <p class="govuk-body-s govuk-!-margin-bottom-2"><strong class="govuk-tag govuk-tag--grey">{{ .StatusLabel }}</strong></p>
@@ -260,4 +324,15 @@
       <img src="/assets/event-placeholder.svg" width="800" height="450" alt="" loading="lazy" decoding="async" />
     {{ end }}
   </figure>
+{{ end }}
+{{ define "home-social-icon" }}
+  {{ if eq .Title "Instagram" }}
+    <img src="/assets/instagram.svg" width="30" height="30" alt="" />
+  {{ else if eq .Title "Discord" }}
+    <img src="/assets/discord.svg" width="30" height="30" alt="" />
+  {{ else if eq .Title "WhatsApp" }}
+    <img src="/assets/whatsapp.svg" width="30" height="30" alt="" />
+  {{ else }}
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m10 14 4-4m-6 6-1 1a3.5 3.5 0 0 1-5-5l5-5a3.5 3.5 0 0 1 5 0m0 10a3.5 3.5 0 0 0 5 0l5-5a3.5 3.5 0 0 0-5-5l-1 1" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+  {{ end }}
 {{ end }}
