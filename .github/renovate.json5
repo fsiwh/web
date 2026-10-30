@@ -97,7 +97,7 @@
     {
       "matchManagers": ["nix"],
       "lockFileMaintenance": { "enabled": true },
-      "semanticCommitScope": "ci"
+      "semanticCommitScope": "deps"
     },
     {
       "matchManagers": ["dockerfile", "docker-compose"],
