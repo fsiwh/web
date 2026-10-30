@@ -225,3 +225,58 @@ func TestNotificationSenderAndReplyAddress(t *testing.T) {
 		})
 	}
 }
+
+func TestNotificationRejectsHeaderInjection(t *testing.T) {
+	sender := NewSender(&config.Config{SMTPFrom: "web@example.org"}, nil)
+	for _, recipient := range []string{"invalid", "user@example.org\r\nBcc: attacker@example.org", "user@example.org\n\nInjected body", "user@example.org, attacker@example.org"} {
+		if _, err := sender.message(recipient, notification{Title: "Feedback"}); err == nil {
+			t.Errorf("accepted invalid recipient %q", recipient)
+		}
+	}
+	if _, err := sender.message("user@example.org", notification{Title: "Feedback\r\nBcc: attacker@example.org"}); err == nil {
+		t.Fatal("accepted injected subject")
+	}
+}
+
+func TestNotificationFeedbackTextCannotInjectMIME(t *testing.T) {
+	sender := NewSender(&config.Config{SMTPFrom: "web@example.org"}, nil)
+	payload := "First line\r\nBcc: attacker@example.org\r\n\r\n.\r\nContent-Type: text/html\r\n<script>alert(1)</script>\nGrüße"
+	raw, err := sender.message("user@example.org", notification{Title: "Feedback", Intro: payload, Validity: payload, Note: payload})
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, err := mail.ReadMessage(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if message.Header.Get("Bcc") != "" || message.Header.Get("Subject") != "Feedback" {
+		t.Fatal("feedback text escaped into message headers")
+	}
+	_, params, err := mime.ParseMediaType(message.Header.Get("Content-Type"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := multipart.NewReader(message.Body, params["boundary"])
+	for _, kind := range []string{"text/plain", "text/html"} {
+		part, err := parts.NextPart()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(part.Header.Get("Content-Type"), kind) {
+			t.Fatal("feedback text changed MIME structure")
+		}
+		body, err := io.ReadAll(part)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Contains(body, []byte("Grüße")) || !bytes.Contains(body, []byte("Bcc: attacker@example.org")) {
+			t.Fatal("feedback text was not preserved in body")
+		}
+		if kind == "text/html" && (bytes.Contains(body, []byte("<script>")) || !bytes.Contains(body, []byte("&lt;script&gt;"))) {
+			t.Fatal("feedback HTML was not escaped")
+		}
+	}
+	if _, err := parts.NextPart(); err != io.EOF {
+		t.Fatal("feedback text injected a MIME part")
+	}
+}

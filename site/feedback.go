@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/fachschaftinformatik/web/view"
@@ -21,7 +22,7 @@ func (c *Handler) PageFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 	// Keep only a local path: query strings may contain private search or account data.
 	u, err := url.Parse(f.Path)
-	if err != nil || u.IsAbs() || u.Host != "" || !strings.HasPrefix(u.Path, "/") || strings.HasPrefix(u.Path, "//") {
+	if err != nil || u.IsAbs() || u.Host != "" || !strings.HasPrefix(u.Path, "/") || strings.HasPrefix(u.Path, "//") || strings.Contains(u.Path, `\`) || strings.ContainsFunc(u.Path, unicode.IsControl) {
 		f.Path = "/"
 	} else {
 		f.Path = u.EscapedPath()
@@ -32,7 +33,13 @@ func (c *Handler) PageFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 	status := http.StatusOK
 	if r.Method == http.MethodPost && r.PostForm.Get("cancel") == "1" {
-		http.Redirect(w, r, f.Path, http.StatusSeeOther)
+		target := f.Path
+		// Validate the final serialized target as well as the parsed path above.
+		if isLocalURL(target) {
+			http.Redirect(w, r, target, http.StatusSeeOther)
+			return
+		}
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 	if r.Method == http.MethodPost {
@@ -57,4 +64,10 @@ func (c *Handler) PageFeedback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	c.renderStatus(w, "feedback", false, view.Page{Title: "Rückmeldung zu dieser Seite", Active: "feedback", Feedback: f}, status)
+}
+
+// isLocalURL accepts only root-relative redirects on this origin. Browsers also
+// treat a backslash after the first slash as an external authority separator.
+func isLocalURL(target string) bool {
+	return target == "/" || (len(target) > 1 && target[0] == '/' && target[1] != '/' && target[1] != '\\' && !strings.ContainsAny(target, "\\\r\n\t"))
 }
