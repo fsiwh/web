@@ -76,7 +76,9 @@
         {{ if not (or (eq .Active "login") (eq .Active "forgot")) }}
         <div class="app-header-tools">
           <div class="app-account-actions">
-            {{ if .SignedIn }} {{ if .CanAdmin }}
+            {{ if .SignedIn }}
+            <a class="govuk-button govuk-button--inverse app-login" href="/account">Mein Konto</a>
+            {{ if .CanAdmin }}
             <a
               class="govuk-button govuk-button--inverse app-login"
               href="/admin"
@@ -224,9 +226,15 @@
         </div>
       </div>
     </div>
-    {{ else if or (eq .Active "login") (eq .Active "forgot") (eq .Active
+    {{ else if or (eq .Active "login") (eq .Active "forgot") (eq .Active "account") (eq .Active
     "register") }}
-    <div class="govuk-width-container">{{ template "breadcrumbs" .Breadcrumbs }}</div>
+    <div class="govuk-width-container">
+      {{ if .BackLink }}
+        <a class="govuk-back-link" href="{{ .BackLink.URL }}">{{ .BackLink.Title }}</a>
+      {{ else }}
+        {{ template "breadcrumbs" .Breadcrumbs }}
+      {{ end }}
+    </div>
     <main
       class="govuk-width-container govuk-main-wrapper"
       id="main-content"

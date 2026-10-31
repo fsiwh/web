@@ -452,6 +452,22 @@ func (s *Service) ConsumeToken(ctx context.Context, value, kind, password string
 	}
 	defer tx.Rollback()
 	var userID int64
+	var replacement, previous string
+	if kind == "verify" {
+		err := tx.QueryRowContext(ctx, `SELECT c.email,c.previous_email FROM account_email_changes c JOIN users u ON u.id=c.user_id WHERE c.token_id=? AND u.active=1 AND u.verified=1 AND u.deleted_at IS NULL AND lower(u.email)=lower(c.previous_email)`, digest(value)).Scan(&replacement, &previous)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		// A pending change whose original account identity no longer matches
+		// must not fall back to ordinary registration verification.
+		var pending bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM account_email_changes WHERE token_id=?)`, digest(value)).Scan(&pending); err != nil {
+			return err
+		}
+		if pending && (replacement == "" || s.EmailError(replacement) != "") {
+			return ErrToken
+		}
+	}
 	err = tx.QueryRowContext(ctx, `DELETE FROM user_tokens WHERE id=? AND kind=? AND expires_at>? AND user_id IN (SELECT id FROM users WHERE deleted_at IS NULL AND (?<>'verify' OR invitation_pending=0)) RETURNING user_id`, digest(value), kind, datetime.FormatUTC(time.Now()), kind).Scan(&userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		if err := tx.Rollback(); err != nil {
@@ -463,7 +479,22 @@ func (s *Service) ConsumeToken(ctx context.Context, value, kind, password string
 	if err != nil {
 		return err
 	}
-	if kind == "verify" {
+	if replacement != "" {
+		var taken bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE lower(email)=lower(?) AND id<>?)`, replacement, userID).Scan(&taken); err != nil {
+			return err
+		}
+		if taken {
+			return ErrEmailExists
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE users SET email=?,password_reset_token=NULL,password_reset_expires=NULL,updated_at=strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE id=? AND lower(email)=lower(?)`, replacement, userID, previous)
+		if err == nil {
+			err = revokeAccountLinks(ctx, tx, userID)
+		}
+		if err == nil {
+			err = queueAccountChange(ctx, tx, userID, "email_changed", previous)
+		}
+	} else if kind == "verify" {
 		_, err = database.New(tx).VerifyUser(ctx, userID)
 	} else {
 		_, err = database.New(tx).UpdateUserPassword(ctx, database.UpdateUserPasswordParams{ID: userID, Password: hash})
@@ -472,6 +503,12 @@ func (s *Service) ConsumeToken(ctx context.Context, value, kind, password string
 		}
 		if err == nil {
 			err = database.New(tx).DeleteUserSessions(ctx, userID)
+		}
+		if err == nil {
+			err = revokeAccountLinks(ctx, tx, userID)
+		}
+		if err == nil {
+			err = queueAccountChange(ctx, tx, userID, "password_changed", "")
 		}
 	}
 	if err != nil {
@@ -483,7 +520,9 @@ func (s *Service) ConsumeToken(ctx context.Context, value, kind, password string
 	if err := tx.Commit(); err != nil {
 		return err
 	}
-	if kind == "verify" {
+	if replacement != "" {
+		audit.Audit(ctx, "account.email_changed", "success", userID)
+	} else if kind == "verify" {
 		audit.Audit(ctx, "account.email_confirmed", "success", userID)
 	} else {
 		audit.Audit(ctx, "account.password_reset", "success", userID)
@@ -495,6 +534,7 @@ func (s *Service) ConsumeToken(ctx context.Context, value, kind, password string
 type Mailer interface {
 	SendVerificationEmail(to, name, link string) error
 	SendPasswordResetEmail(to, name, link string) error
+	SendAccountChangedEmail(to, name, kind string) error
 }
 
 // DeliverMail retains failed messages for a later retry.
@@ -502,7 +542,8 @@ func (s *Service) DeliverMail(ctx context.Context, mailer Mailer) error {
 	if err := s.PurgeExpired(ctx); err != nil {
 		return err
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT id,user_id,kind,recipient,name,link FROM mail_outbox ORDER BY id LIMIT 20`)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,user_id,kind,recipient,name,link FROM mail_outbox
+		UNION ALL SELECT id,user_id,kind,recipient,name,'' FROM account_change_mail ORDER BY id LIMIT 20`)
 	if err != nil {
 		return err
 	}
@@ -529,7 +570,10 @@ func (s *Service) DeliverMail(ctx context.Context, mailer Mailer) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if m.kind == "verify" {
+		change := m.kind == "password_changed" || m.kind == "email_changed"
+		if change {
+			err = mailer.SendAccountChangedEmail(m.to, m.name, m.kind)
+		} else if m.kind == "verify" {
 			err = mailer.SendVerificationEmail(m.to, m.name, m.link)
 		} else {
 			err = mailer.SendPasswordResetEmail(m.to, m.name, m.link)
@@ -539,7 +583,11 @@ func (s *Service) DeliverMail(ctx context.Context, mailer Mailer) error {
 			failures = append(failures, fmt.Errorf("deliver queued mail: %w", err))
 			continue
 		}
-		if _, err = s.db.ExecContext(ctx, `DELETE FROM mail_outbox WHERE id=?`, m.id); err != nil {
+		statement := `DELETE FROM mail_outbox WHERE id=?`
+		if change {
+			statement = `DELETE FROM account_change_mail WHERE id=?`
+		}
+		if _, err = s.db.ExecContext(ctx, statement, m.id); err != nil {
 			return err
 		}
 		audit.Audit(ctx, "account.mail", "smtp_accepted", m.userID, slog.Int64("mail_id", m.id), slog.String("kind", m.kind))

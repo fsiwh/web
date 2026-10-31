@@ -101,6 +101,9 @@ func (p Page) Breadcrumbs() []Breadcrumb {
 			items = append(items, Breadcrumb{p.Media.Album.Title, p.Media.Return})
 		}
 	}
+	if p.Active == "account" && p.Preferences.Section != "" {
+		items = append(items, Breadcrumb{"Kontoeinstellungen", "/account"})
+	}
 	if p.Active == "register" || p.Active == "forgot" {
 		items = append(items, Breadcrumb{"Anmelden", "/login"})
 	}
@@ -121,6 +124,7 @@ const NewsURL = "/news"
 // a feature-specific content model before execution; templates never receive
 // this aggregate. Keep domain-to-view mapping in the controller layer.
 type Page struct {
+	Preferences                                                     PreferencesPage
 	ShowCookieNotice                                                bool
 	Feedback                                                        FeedbackPage
 	BuildVersion                                                    string

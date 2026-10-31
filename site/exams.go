@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/fachschaftinformatik/web/internal/urls"
 	"github.com/fachschaftinformatik/web/model/exams"
 	"github.com/fachschaftinformatik/web/view"
 )
@@ -30,7 +31,8 @@ func (c *Handler) preferredExamsFilter(w http.ResponseWriter, r *http.Request) (
 func (c *Handler) ExamSettings(w http.ResponseWriter, r *http.Request) {
 
 	user := w.(*sessionResponse).session.UserID
-	if r.Method == http.MethodPost && r.PostForm.Get("intent") == "submission-mail" {
+	account := r.URL.Path == urls.AccountStudiesPath
+	if !account && r.Method == http.MethodPost && r.PostForm.Get("intent") == "submission-mail" {
 		if err := c.exams.SaveSubmissionMailPreference(r.Context(), user, r.PostForm.Get("submission_mail") == "on"); err != nil {
 			c.examsWriteError(w, r, err)
 			return
@@ -51,10 +53,15 @@ func (c *Handler) ExamSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	status := 200
 	page := view.Page{Title: "Einstellungen für Lernmaterial", Active: "exams", Upload: view.UploadPage{Action: r.URL.Path}}
-	page.Upload.SubmissionMail, page.Upload.CanReceiveSubmissionMail, err = c.exams.SubmissionMailPreference(r.Context(), user)
-	if err != nil {
-		c.examsWriteError(w, r, err)
-		return
+	if account {
+		page.Title, page.Active = "Studium", "account"
+		page.Preferences.Section = "studies"
+	} else {
+		page.Upload.SubmissionMail, page.Upload.CanReceiveSubmissionMail, err = c.exams.SubmissionMailPreference(r.Context(), user)
+		if err != nil {
+			c.examsWriteError(w, r, err)
+			return
+		}
 	}
 	if r.Method == http.MethodPost {
 		filter = exams.Filter{Programs: slices.DeleteFunc(r.PostForm["program"], func(value string) bool { return value == "" }), Degrees: r.PostForm["degree"], Versions: r.PostForm["version"]}
@@ -68,6 +75,11 @@ func (c *Handler) ExamSettings(w http.ResponseWriter, r *http.Request) {
 			status = 422
 			page.DocumentTitle = "Fehler: " + page.Title
 		} else {
+			if account {
+				flash(w, "Deine Angaben zum Studium wurden gespeichert.")
+				http.Redirect(w, r, urls.AccountPath, http.StatusSeeOther)
+				return
+			}
 			http.Redirect(w, r, "/exams", http.StatusSeeOther)
 			return
 		}

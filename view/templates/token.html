@@ -56,7 +56,7 @@
           />
         </div>
       {{ else }}
-        <p class="govuk-body">Bestätige deine E-Mail-Adresse, um dich anmelden zu können.</p>
+        <p class="govuk-body">Bestätige, dass du Zugriff auf diese E-Mail-Adresse hast.</p>
       {{ end }}
       <button class="govuk-button" id="confirm" type="submit" data-module="govuk-button">
         {{ if eq .Token.Kind "confirm" }}
