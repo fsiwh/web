@@ -4,6 +4,21 @@
 
 package database
 
+type AccountChangeMail struct {
+	ID        int64  `json:"id"`
+	UserID    int64  `json:"user_id"`
+	Kind      string `json:"kind"`
+	Recipient string `json:"recipient"`
+	Name      string `json:"name"`
+}
+
+type AccountEmailChange struct {
+	UserID        int64  `json:"user_id"`
+	TokenID       string `json:"token_id"`
+	Email         string `json:"email"`
+	PreviousEmail string `json:"previous_email"`
+}
+
 type Activity struct {
 	ID         int64   `json:"id"`
 	UserID     int64   `json:"user_id"`

@@ -46,6 +46,7 @@ type LayoutData struct {
 	PendingSubmission                       bool
 	PublishedAt, PublishedLabel             string
 	Navigation                              SectionNavigation
+	BackLink                                *Breadcrumb
 }
 
 type SectionNavigation struct {
@@ -74,6 +75,9 @@ func (p Page) document(content any) LayoutData {
 			EventsNested: p.Events.Detail != nil || p.Posts.Thread != nil || p.Editor != nil,
 			MediaNested:  p.Media.Detail,
 		},
+	}
+	if p.Active == "account" && p.Preferences.Section != "" {
+		d.BackLink = &Breadcrumb{Title: "Zurück zu den Kontoeinstellungen", URL: "/account"}
 	}
 	if p.Events.Detail != nil {
 		d.PublishedAt, d.PublishedLabel = p.Events.Detail.SourcePublishedAt, p.Events.Detail.SourceDateLabel()
@@ -151,6 +155,11 @@ type LoginContent struct {
 	Login LoginPage
 }
 
+type PreferencesContent struct {
+	CommonData
+	Preferences PreferencesPage
+}
+
 type RegisterContent struct {
 	CommonData
 	Register RegisterPage
@@ -210,6 +219,8 @@ func pageContent(name string, p Page) any {
 		return EditorContent{CommonData: c, Editor: p.Editor}
 	case "login":
 		return LoginContent{CommonData: c, Login: p.Login}
+	case "preferences":
+		return PreferencesContent{CommonData: c, Preferences: p.Preferences}
 	case "register":
 		return RegisterContent{CommonData: c, Register: p.Register}
 	case "forgot":

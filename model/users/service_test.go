@@ -148,6 +148,10 @@ type queuedMailer struct {
 	delivered []string
 }
 
+func (m *queuedMailer) SendAccountChangedEmail(to, name, kind string) error {
+	return m.SendVerificationEmail(to, name, kind)
+}
+
 func (m *queuedMailer) SendVerificationEmail(to, name, link string) error {
 	if to == m.failTo {
 		return errors.New("SMTP unavailable")

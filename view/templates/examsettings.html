@@ -1,9 +1,9 @@
 {{ define "sidebar" }}{{ end }}
 {{ define "content" }}
+  {{ if eq .Active "account" }}<h1 class="govuk-heading-l">{{ .Title }}</h1>{{ end }}
   <p class="govuk-body">
-    Diese Auswahl wird beim Öffnen des Lernmaterials und beim Einreichen eines Dokuments
-    vorausgewählt. Du kannst die Filter jederzeit ändern. Ohne Auswahl wird das gesamte Lernmaterial
-    angezeigt.
+    Deine Auswahl gilt als Voreinstellung für Lernmaterial und Einreichungen. Du kannst sie jederzeit
+    ändern.
   </p>
   {{ with .Upload }}
     {{ if .Errors }}
@@ -25,8 +25,8 @@
       {{ template "upload-scope" (scopeField "version" "Prüfungsordnungen" .Versions "") }}
       <div class="govuk-button-group">
         <button class="govuk-button" type="submit" data-module="govuk-button">
-          Voreinstellungen speichern</button
-        ><a class="govuk-link" href="/exams">Abbrechen</a>
+          {{ if eq $.Active "account" }}Speichern{{ else }}Voreinstellungen speichern{{ end }}</button
+        ><a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="{{ if eq $.Active "account" }}/account{{ else }}/exams{{ end }}">Abbrechen</a>
       </div>
     </form>
     {{ if .CanReceiveSubmissionMail }}

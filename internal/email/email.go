@@ -77,6 +77,24 @@ func (s *Sender) SendPasswordResetEmail(toEmail, name, link string) error {
 	})
 }
 
+func (s *Sender) SendAccountChangedEmail(toEmail, name, kind string) error {
+	n := notification{
+		Name: name, Link: s.cfg.Domain + urls.ForgotPasswordPath,
+		Title:  "Dein Passwort wurde geändert",
+		Intro:  "Das Passwort für dein Benutzerkonto wurde geändert.",
+		Action: "Passwort zurücksetzen",
+		Note:   "Wenn du diese Änderung nicht vorgenommen hast, setze dein Passwort zurück und wende dich an die Fachschaft.",
+	}
+	if kind == "email_changed" {
+		n.Title = "Deine E-Mail-Adresse wurde geändert"
+		n.Intro = "Die E-Mail-Adresse für dein Benutzerkonto wurde nach der Bestätigung der neuen Adresse geändert. Diese Nachricht geht zur Information an deine bisherige Adresse."
+		n.Link = s.cfg.Domain + urls.ContactPath
+		n.Action = "Fachschaft kontaktieren"
+		n.Note = "Wenn du diese Änderung nicht vorgenommen hast, wende dich an die Fachschaft."
+	}
+	return s.notify(toEmail, n)
+}
+
 func (s *Sender) SendSubmissionEmail(toEmail, name, submissionID string) error {
 	return s.notify(toEmail, notification{
 		Name: name, Link: s.cfg.Domain + urls.ReviewSubmission(submissionID),

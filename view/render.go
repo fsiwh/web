@@ -19,7 +19,7 @@ type Renderer struct {
 
 func NewRenderer() (*Renderer, error) {
 	r := &Renderer{pages: make(map[string]*template.Template)}
-	for _, name := range []string{"landing", "team", "contact", "sitemap", "legal", "cookies", "feedback", "error", "exams", "examsettings", "module", "upload", "submission", "submissions", "media", "community", "about", "content", "elections", "regulations", "login", "register", "forgot", "token", "invite", "posts", "thread", "profile", "news", "events", "editor", "admin", "sessionexpired"} {
+	for _, name := range []string{"landing", "team", "contact", "sitemap", "legal", "cookies", "feedback", "error", "exams", "examsettings", "module", "upload", "submission", "submissions", "media", "community", "about", "content", "elections", "regulations", "login", "register", "forgot", "token", "invite", "preferences", "posts", "thread", "profile", "news", "events", "editor", "admin", "sessionexpired"} {
 		if pageContent(name, Page{}) == nil {
 			return nil, fmt.Errorf("view %q has no content model", name)
 		}

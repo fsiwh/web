@@ -328,7 +328,7 @@ func (c *Handler) Token(w http.ResponseWriter, r *http.Request) {
 		}
 		if page.Token.Error == "" {
 			err := c.identity.ConsumeToken(r.Context(), page.Token.Value, kind, password)
-			if errors.Is(err, users.ErrToken) {
+			if errors.Is(err, users.ErrToken) || errors.Is(err, users.ErrEmailExists) {
 				page.Token.Error = err.Error()
 			} else {
 				if err != nil {

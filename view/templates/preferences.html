@@ -1,0 +1,155 @@
+{{ define "sidebar" }}{{ end }}
+{{ define "content" }}
+  {{ if .Preferences.HasErrors }}
+    <div class="govuk-error-summary" data-module="govuk-error-summary">
+      <div role="alert">
+        <h2 class="govuk-error-summary__title">Es gibt ein Problem</h2>
+        <div class="govuk-error-summary__body">
+          <ul class="govuk-list govuk-error-summary__list">
+            {{ range .Preferences.Fields }}{{ if .Error }}<li><a href="#{{ .ID }}">{{ .Error }}</a></li>{{ end }}{{ end }}
+          </ul>
+        </div>
+      </div>
+    </div>
+  {{ end }}
+  {{ if .Preferences.Success }}
+    <div class="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="account-success" data-module="govuk-notification-banner">
+      <div class="govuk-notification-banner__header"><h2 class="govuk-notification-banner__title" id="account-success">Erfolg</h2></div>
+      <div class="govuk-notification-banner__content"><p class="govuk-notification-banner__heading">{{ .Preferences.Success }}</p></div>
+    </div>
+  {{ end }}
+  {{ if ne .Preferences.Section "notifications" }}<h1 class="govuk-heading-l">{{ .Title }}</h1>{{ end }}
+  {{ if not .Preferences.Section }}
+    <dl class="govuk-summary-list">
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Name</dt>
+        <dd class="govuk-summary-list__value">{{ .Preferences.Name }}</dd>
+        <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/account/name">Ändern<span class="govuk-visually-hidden">: Name</span></a></dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">E-Mail-Adresse</dt>
+        <dd class="govuk-summary-list__value">{{ .Preferences.Email }}</dd>
+        <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/account/email">Ändern<span class="govuk-visually-hidden">: E-Mail-Adresse</span></a></dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Passwort</dt>
+        <dd class="govuk-summary-list__value">Festgelegt</dd>
+        <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/account/password">Ändern<span class="govuk-visually-hidden">: Passwort</span></a></dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Abschluss</dt>
+        <dd class="govuk-summary-list__value">{{ if .Preferences.StudyDegrees }}{{ .Preferences.StudyDegrees }}{{ else }}Keine Angabe{{ end }}</dd>
+        <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/account/studies">Ändern<span class="govuk-visually-hidden">: Abschluss</span></a></dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Studiengang</dt>
+        <dd class="govuk-summary-list__value">{{ if .Preferences.StudyPrograms }}{{ .Preferences.StudyPrograms }}{{ else }}Keine Angabe{{ end }}</dd>
+        <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/account/studies">Ändern<span class="govuk-visually-hidden">: Studiengang</span></a></dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Prüfungsordnung</dt>
+        <dd class="govuk-summary-list__value">{{ if .Preferences.StudyVersions }}{{ .Preferences.StudyVersions }}{{ else }}Keine Angabe{{ end }}</dd>
+        <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/account/studies">Ändern<span class="govuk-visually-hidden">: Prüfungsordnung</span></a></dd>
+      </div>
+      <div class="govuk-summary-list__row">
+        <dt class="govuk-summary-list__key">Benachrichtigungen</dt>
+        <dd class="govuk-summary-list__value">Vorschau</dd>
+        <dd class="govuk-summary-list__actions"><a class="govuk-link" href="/account/notifications">Ändern<span class="govuk-visually-hidden">: Benachrichtigungen</span></a></dd>
+      </div>
+    </dl>
+    {{ if .Preferences.PendingEmail }}
+      <h2 class="govuk-heading-m">Bestätige deine neue E-Mail-Adresse</h2>
+      <p class="govuk-body">Die E-Mail mit dem Bestätigungslink wird an <strong>{{ .Preferences.PendingEmail }}</strong> gesendet. Öffne den Link und bestätige die neue Adresse. Der Link ist 24 Stunden gültig.</p>
+      <p class="govuk-body">Bis zur Bestätigung meldest du dich weiterhin mit {{ .Preferences.Email }} an.</p>
+      <p class="govuk-body">Keine E-Mail erhalten? Prüfe deinen Spam-Ordner oder <a class="govuk-link" href="/account/email">fordere einen neuen Link an oder ändere die Adresse</a>.</p>
+    {{ end }}
+  {{ else if eq .Preferences.Section "notifications" }}
+    {{ template "notification-preferences" . }}
+  {{ else }}
+    {{ if eq .Preferences.Section "email" }}
+      <p class="govuk-body">Wir senden einen Bestätigungslink an deine neue E-Mail-Adresse. Erst nach der Bestätigung wird sie für die Anmeldung und das Zurücksetzen deines Passworts verwendet.</p>
+      {{ if .Preferences.PendingEmail }}<p class="govuk-body">Um einen neuen Link für {{ .Preferences.PendingEmail }} anzufordern, sende dieses Formular erneut ab. Der vorherige Link wird dadurch ungültig.</p>{{ end }}
+    {{ else if eq .Preferences.Section "password" }}
+      <p class="govuk-body">Nach der Änderung wirst du auf allen anderen Geräten abgemeldet. Auf diesem Gerät bleibst du angemeldet.</p>
+    {{ end }}
+    <form action="{{ .Preferences.Action }}" method="post" novalidate>
+      <input type="hidden" name="csrf" value="{{ .CSRF }}" />
+      {{ range .Preferences.Fields }}
+        <div class="govuk-form-group {{ if .Error }}govuk-form-group--error{{ end }} {{ if eq .Type "password" }}govuk-password-input{{ end }}"
+          {{ if eq .Type "password" }}data-module="govuk-password-input" data-i18n-show-password-aria-label="{{ .Label }} anzeigen" data-i18n-hide-password-aria-label="{{ .Label }} verbergen"{{ end }}>
+          <label class="govuk-label" for="{{ .ID }}">{{ .Label }}</label>
+          {{ if .Hint }}<div class="govuk-hint" id="{{ .ID }}-hint">{{ .Hint }}{{ if eq .Type "email" }} <strong class="govuk-!-font-weight-bold">{{ $.AccountDomains }}</strong>.{{ end }}</div>{{ end }}
+          {{ if .Error }}<p class="govuk-error-message" id="{{ .ID }}-error"><span class="govuk-visually-hidden">Fehler:</span> {{ .Error }}</p>{{ end }}
+          {{ if eq .Type "password" }}<div class="govuk-input__wrapper govuk-password-input__wrapper">{{ end }}
+          <input class="govuk-input {{ if .Error }}govuk-input--error{{ end }} {{ if eq .Type "password" }}govuk-password-input__input govuk-js-password-input-input{{ end }}"
+            id="{{ .ID }}" name="{{ .ID }}" type="{{ .Type }}" autocomplete="{{ .Autocomplete }}" spellcheck="false" autocapitalize="none"
+            {{ if ne .Type "password" }}value="{{ .Value }}"{{ end }}
+            {{ if or .Hint .Error }}aria-describedby="{{ if .Hint }}{{ .ID }}-hint {{ end }}{{ if .Error }}{{ .ID }}-error{{ end }}"{{ end }}
+            {{ if .Error }}aria-invalid="true"{{ end }} />
+          {{ if eq .Type "password" }}
+            <button class="govuk-button govuk-button--secondary govuk-password-input__toggle govuk-js-password-input-toggle" type="button" data-module="govuk-button" aria-controls="{{ .ID }}" aria-label="{{ .Label }} anzeigen" hidden>Anzeigen</button>
+            </div>
+          {{ end }}
+        </div>
+      {{ end }}
+      <div class="govuk-button-group">
+        <button class="govuk-button" type="submit" data-module="govuk-button">{{ if eq .Preferences.Section "email" }}Bestätigungslink anfordern{{ else }}Änderung speichern{{ end }}</button>
+        <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/account">Abbrechen</a>
+      </div>
+    </form>
+    {{ if or (eq .Preferences.Section "password") (eq .Preferences.Section "email") }}<p class="govuk-body"><a class="govuk-link" href="/password/forgot">Passwort vergessen?</a></p>{{ end }}
+  {{ end }}
+{{ end }}
+
+{{ define "notification-preferences" }}
+  <form>
+    <div class="govuk-form-group">
+      <fieldset class="govuk-fieldset" aria-describedby="notifications-hint">
+        <legend class="govuk-fieldset__legend govuk-fieldset__legend--l">
+          <h1 class="govuk-fieldset__heading">{{ .Title }}</h1>
+        </legend>
+        <div class="govuk-hint" id="notifications-hint">Benachrichtigungen werden an deine hinterlegte E-Mail-Adresse gesendet.</div>
+        <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+          <div class="govuk-checkboxes__item">
+            <input class="govuk-checkboxes__input" id="notifications-news" name="notifications" type="checkbox" value="news" aria-describedby="notifications-news-hint" />
+            <label class="govuk-label govuk-checkboxes__label" for="notifications-news">Ankündigungen und Veranstaltungen</label>
+            <div class="govuk-hint govuk-checkboxes__hint" id="notifications-news-hint">Neuigkeiten, Termine und Sitzungsunterlagen der Fachschaft</div>
+          </div>
+          <div class="govuk-checkboxes__item">
+            <input class="govuk-checkboxes__input" id="notifications-activity" name="notifications" type="checkbox" value="activity" aria-describedby="notifications-activity-hint" />
+            <label class="govuk-label govuk-checkboxes__label" for="notifications-activity">Antworten und Rückmeldungen</label>
+            <div class="govuk-hint govuk-checkboxes__hint" id="notifications-activity-hint">Antworten auf deine Beiträge und Rückmeldungen zu deinen Einreichungen</div>
+          </div>
+          <div class="govuk-checkboxes__item">
+            <input class="govuk-checkboxes__input" id="notifications-material" name="notifications" type="checkbox" value="material" aria-describedby="notifications-material-hint" />
+            <label class="govuk-label govuk-checkboxes__label" for="notifications-material">Neues Lernmaterial</label>
+            <div class="govuk-hint govuk-checkboxes__hint" id="notifications-material-hint">Tägliche Übersicht neuer Materialien für dein Studium</div>
+          </div>
+          <div class="govuk-checkboxes__divider">oder</div>
+          <div class="govuk-checkboxes__item">
+            <input class="govuk-checkboxes__input" id="notifications-none" name="notifications" type="checkbox" value="none" data-behaviour="exclusive" />
+            <label class="govuk-label govuk-checkboxes__label" for="notifications-none">Keine optionalen Benachrichtigungen</label>
+          </div>
+        </div>
+      </fieldset>
+    </div>
+    {{ if .Preferences.ReviewerNotifications }}
+      <div class="govuk-form-group">
+        <fieldset class="govuk-fieldset">
+          <legend class="govuk-fieldset__legend govuk-fieldset__legend--m">Für die Prüfung von Einreichungen</legend>
+          <div class="govuk-checkboxes" data-module="govuk-checkboxes">
+            <div class="govuk-checkboxes__item">
+              <input class="govuk-checkboxes__input" id="notifications-review" name="review_notifications" type="checkbox" value="on" aria-describedby="notifications-review-hint" {{ if .Preferences.ReviewerNotificationsEnabled }}checked{{ end }} />
+              <label class="govuk-label govuk-checkboxes__label" for="notifications-review">Neue Einreichungen zur Prüfung</label>
+              <div class="govuk-hint govuk-checkboxes__hint" id="notifications-review-hint">Wenn Lernmaterial zur Prüfung eingereicht wird</div>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+    {{ end }}
+    <div class="govuk-button-group">
+      <button class="govuk-button" type="button" disabled>Einstellungen speichern</button>
+      <a class="govuk-button govuk-button--secondary" data-module="govuk-button" href="/account">Abbrechen</a>
+    </div>
+  </form>
+{{ end }}

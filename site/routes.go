@@ -144,6 +144,13 @@ func registerMedia(c *Handler, register routeRegister) {
 func registerAccounts(c *Handler, register routeRegister) {
 	account := routePolicy{session: true, csrf: true, bodyLimit: 64 << 10}
 	member := routePolicy{authenticated: true, csrf: true, bodyLimit: 8 << 20}
+	preferences := routePolicy{authenticated: true, csrf: true, private: true, bodyLimit: 64 << 10}
+	register("GET "+urls.AccountPath, preferences, c.AccountPreferences)
+	register("GET "+urls.AccountNotificationsPath, preferences, section("notifications", c.AccountPreferences))
+	forms(register, urls.AccountStudiesPath, preferences, c.ExamSettings)
+	for _, item := range []struct{ path, section string }{{urls.AccountNamePath, "name"}, {urls.AccountEmailPath, "email"}, {urls.AccountPasswordPath, "password"}} {
+		forms(register, item.path, preferences, section(item.section, c.AccountPreferences))
+	}
 	forms(register, urls.LoginPath, account, c.Login)
 	register("POST "+urls.LogoutPath, member, c.Logout)
 	forms(register, urls.RegisterPath, account, c.Register)

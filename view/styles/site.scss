@@ -1365,7 +1365,7 @@
 
 .app-logout { margin: 0; }
 .app-header-tools { flex-wrap: wrap; }
-.app-account-actions { display: flex; gap: 15px; align-items: center; flex-shrink: 0; }
+.app-account-actions { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; flex-shrink: 0; }
 .app-admin-table { table-layout: fixed; overflow-wrap: anywhere; hyphens: auto; }
 .app-admin-users__name { width: 23%; }
 .app-admin-users__email { width: 37%; }
