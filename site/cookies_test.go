@@ -45,11 +45,14 @@ func TestCookieNoticeInitialVisibility(t *testing.T) {
 		w := httptest.NewRecorder()
 		c.ServeHTTP(w, r)
 		banner := regexp.MustCompile(`<div[^>]*data-cookie-banner[^>]*>`).FindString(w.Body.String())
-		if w.Code != http.StatusOK || banner == "" {
-			t.Fatalf("missing banner: %d", w.Code)
+		if w.Code != http.StatusOK {
+			t.Fatalf("page response: %d", w.Code)
 		}
-		if hidden := strings.Contains(banner, "hidden"); hidden != (value == "dismissed-v1") {
-			t.Fatalf("cookie %q: initial banner hidden = %t", value, hidden)
+		if present := banner != ""; present != (value != "dismissed-v1") {
+			t.Fatalf("cookie %q: initial banner present = %t", value, present)
+		}
+		if strings.Contains(banner, "hidden") {
+			t.Fatal("an undismissed notice must be visible in the initial HTML")
 		}
 		if !strings.Contains(w.Header().Get("Vary"), "Cookie") {
 			t.Fatal("cookie-dependent document must vary by Cookie")
