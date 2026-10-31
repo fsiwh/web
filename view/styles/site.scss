@@ -674,13 +674,32 @@
   outline-offset: 3px;
 }
 
-.app-event-carousel__controls:not([hidden]) {
-  display: flex;
+.app-event-carousel__controls {
   order: 1;
   align-items: center;
   justify-content: center;
   gap: 6px;
   margin: 12px 0 0;
+}
+
+.app-event-carousel__controls:not([hidden]) {
+  display: flex;
+}
+
+/* Keep the enhanced controls' space before the module initializes. */
+.js-enabled .app-event-carousel__controls[hidden] {
+  display: flex;
+  visibility: hidden;
+}
+
+@media (max-width: 40.0525em) {
+  .app-navigation-pending {
+    display: none !important;
+  }
+
+  .govuk-service-navigation__wrapper:has(.app-navigation-pending) {
+    min-height: 45px;
+  }
 }
 
 .app-event-carousel__button {

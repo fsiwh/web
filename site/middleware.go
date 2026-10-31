@@ -25,6 +25,7 @@ type session = users.Session
 type routePolicy struct {
 	session, authenticated, admin, reviewer, csrf, private bool
 	passive                                                bool
+	static                                                 bool
 	bodyLimit                                              int64
 }
 
@@ -38,9 +39,10 @@ func randomToken() string {
 
 type sessionResponse struct {
 	http.ResponseWriter
-	session      *session
-	canonicalURL string
-	status       int
+	session          *session
+	canonicalURL     string
+	status           int
+	showCookieNotice bool
 }
 
 func (w *sessionResponse) WriteHeader(status int) {
@@ -128,6 +130,12 @@ func (c *Handler) withSession(policy routePolicy, next http.Handler) http.Handle
 			}
 			audit.Audit(ctx, "http.request", outcome, userID, details...)
 		}()
+		if policy.static {
+			next.ServeHTTP(response, r)
+			return
+		}
+		cookie, cookieErr := r.Cookie("cookie-notice")
+		response.showCookieNotice = cookieErr != nil || cookie.Value != "dismissed-v1"
 		var s *session
 		if cookie, err := r.Cookie(sessionCookie); err == nil {
 			var err error

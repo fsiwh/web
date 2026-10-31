@@ -4,15 +4,6 @@ function initCookies() {
   const banner = document.querySelector<HTMLElement>("[data-cookie-banner]");
   if (!banner || banner.dataset.initialized) return;
   banner.dataset.initialized = "true";
-  let dismissed = false;
-  try {
-    dismissed = document.cookie
-      .split(";")
-      .some((cookie) => cookie.trim() === "cookie-notice=dismissed-v1");
-  } catch {
-    // Cookie access can be unavailable when browser storage is blocked.
-  }
-  banner.hidden = dismissed;
   requireElement("[data-cookie-hide]", banner).addEventListener("click", () => {
     try {
       const secure = location.protocol === "https:" ? "; Secure" : "";
@@ -1050,6 +1041,9 @@ function initPageFeedback() {
 function initSite() {
   initPageFeedback();
   initFrontend(document);
+  document
+    .querySelector(".app-navigation-pending")
+    ?.classList.remove("app-navigation-pending");
   initCookies();
   document.querySelectorAll<HTMLFormElement>("form.app-vote").forEach(initVote);
   document.querySelectorAll<HTMLElement>("[data-dialog]").forEach(initDialog);

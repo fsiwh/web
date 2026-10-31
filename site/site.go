@@ -125,7 +125,11 @@ func (c *Handler) serverError(w http.ResponseWriter, err error) {
 	c.pageError(w, "Versuche es später erneut. Deine Anfrage konnte nicht abgeschlossen werden.", http.StatusInternalServerError)
 }
 
-func (c *Handler) renderStatus(w http.ResponseWriter, page string, fragment bool, data view.Page, status int) {
+// preparePage assembles request-scoped presentation data before rendering.
+func (c *Handler) preparePage(w http.ResponseWriter, fragment bool, data view.Page, status int) view.Page {
+	if response, ok := w.(*sessionResponse); ok {
+		data.ShowCookieNotice = response.showCookieNotice
+	}
 	data.BuildVersion = c.buildVersion
 	data.BuildRevision = c.buildRevision
 	if status != http.StatusOK || fragment {
@@ -176,8 +180,19 @@ func (c *Handler) renderStatus(w http.ResponseWriter, page string, fragment bool
 			data.SessionNow = time.Now().UnixMilli()
 		}
 	}
+	return data
+}
+
+func (c *Handler) renderStatus(w http.ResponseWriter, page string, fragment bool, data view.Page, status int) {
+	data = c.preparePage(w, fragment, data, status)
 	var html bytes.Buffer
-	if err := c.views.Render(&html, page, fragment, data); err != nil {
+	var err error
+	if fragment {
+		err = c.views.RenderFragment(&html, page, "results", data)
+	} else {
+		err = c.views.RenderPage(&html, page, data)
+	}
+	if err != nil {
 		log.Printf("Render %s: %v", page, err)
 		http.Error(w, "Die Seite konnte nicht geladen werden.", http.StatusInternalServerError)
 		return

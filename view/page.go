@@ -117,7 +117,11 @@ type LegalPage struct {
 
 const NewsURL = "/news"
 
+// Page is the controller-to-renderer input. It is projected into CommonData and
+// a feature-specific content model before execution; templates never receive
+// this aggregate. Keep domain-to-view mapping in the controller layer.
 type Page struct {
+	ShowCookieNotice                                                bool
 	Feedback                                                        FeedbackPage
 	BuildVersion                                                    string
 	BuildRevision                                                   string

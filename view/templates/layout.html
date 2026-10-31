@@ -18,13 +18,15 @@
     {{ if .CanonicalURL }}
     <link rel="canonical" href="{{ .CanonicalURL }}" />
     {{ end }}
-    <link rel="stylesheet" href="/assets/govuk.css" />
-    <link rel="stylesheet" href="/assets/site.css" />
-    <script src="/assets/htmx.js" defer></script>
-    <script src="/assets/site.js" type="module"></script>
-    {{ if .Editor }}
-    <script src="/assets/tinymce/tinymce.min.js" defer></script>
-    <script src="/assets/editor.js" type="module"></script>
+    <link rel="preload" href="{{ asset "fonts/light-94a07e06a1-v2.woff2" }}" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="{{ asset "fonts/bold-b542beb274-v2.woff2" }}" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="{{ asset "govuk.css" }}" />
+    <link rel="stylesheet" href="{{ asset "site.css" }}" />
+    <script src="{{ asset "htmx.js" }}" defer></script>
+    <script src="{{ asset "site.js" }}" type="module"></script>
+    {{ if .HasEditor }}
+    <script src="{{ asset "tinymce/tinymce.min.js" }}" defer></script>
+    <script src="{{ asset "editor.js" }}" type="module"></script>
     {{ end }}
   </head>
   <body class="govuk-template__body">
@@ -36,7 +38,7 @@
           : "");
     </script>
     {{ if ne .Active "cookies" }}
-    <div class="govuk-cookie-banner" data-cookie-banner role="region" aria-label="Cookies auf {{ .Organization.Name }}" data-nosnippet hidden>
+    <div class="govuk-cookie-banner" data-cookie-banner role="region" aria-label="Cookies auf {{ .Organization.Name }}" data-nosnippet {{ if not .ShowCookieNotice }}hidden{{ end }}>
       <div class="govuk-cookie-banner__message govuk-width-container">
         <div class="govuk-grid-row">
           <div class="govuk-grid-column-two-thirds">
@@ -180,17 +182,27 @@
                 >
               </li>
             </ul>
+            <script>
+              // Match the mobile menu's enhanced geometry before first paint.
+              // Reveal the fallback links if the module cannot initialize.
+              (() => {
+                const nav = document.getElementById("navigation");
+                if (!nav || !window.matchMedia("(max-width: 40.0525em)").matches) return;
+                nav.classList.add("app-navigation-pending");
+                window.setTimeout(() => nav.classList.remove("app-navigation-pending"), 3000);
+              })();
+            </script>
           </nav>
         </div>
       </div>
     </div>
     {{ if eq .Active "home" }}
-    <main id="main-content" tabindex="-1">{{ template "content" . }}</main>
+    <main id="main-content" tabindex="-1">{{ template "content" .Content }}</main>
     {{ else if eq .Active "exams" }}
     <div class="govuk-width-container">
-      {{ template "breadcrumbs" . }}
+      {{ template "breadcrumbs" .Breadcrumbs }}
       <main class="govuk-main-wrapper" id="main-content" tabindex="-1">
-        {{ if or .Upload.Action .Submission }}
+        {{ if .NarrowExams }}
         <div class="govuk-grid-row">
           <div class="govuk-grid-column-two-thirds">
             {{ template "exams-content" . }}
@@ -204,17 +216,17 @@
     <div class="govuk-width-container">
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-two-thirds">
-          {{ template "breadcrumbs" . }}
+            {{ template "breadcrumbs" .Breadcrumbs }}
           <main class="govuk-main-wrapper" id="main-content" tabindex="-1">
             <h1 class="govuk-heading-xl">{{ .Title }}</h1>
-            {{ template "content" . }}
+            {{ template "content" .Content }}
           </main>
         </div>
       </div>
     </div>
     {{ else if or (eq .Active "login") (eq .Active "forgot") (eq .Active
     "register") }}
-    <div class="govuk-width-container">{{ template "breadcrumbs" . }}</div>
+    <div class="govuk-width-container">{{ template "breadcrumbs" .Breadcrumbs }}</div>
     <main
       class="govuk-width-container govuk-main-wrapper"
       id="main-content"
@@ -222,7 +234,7 @@
     >
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-two-thirds">
-          {{ template "content" . }}
+          {{ template "content" .Content }}
         </div>
       </div>
     </main>
@@ -230,7 +242,7 @@
     <div class="govuk-width-container app-split-pane">
       <aside
         class="app-sidebar"
-        aria-label="{{- if .Admin -}}
+        aria-label="{{- if .AdminNavigation -}}
               Verwaltungsnavigation
             {{- else if eq .Active `exams` -}}
               Klausurfilter
@@ -240,12 +252,12 @@
               Community-Navigation
             {{- end -}}"
       >
-        {{ if .About }}{{ template "about-navigation" . }}{{ end }} {{ if
-        .Community }}{{ template "community-navigation" . }}{{ end }} {{
-        template "sidebar" . }}
+        {{ if .About }}{{ template "about-navigation" .Navigation }}{{ end }} {{ if
+        .Community }}{{ template "community-navigation" .Navigation }}{{ end }} {{
+        template "sidebar" .Content }}
       </aside>
       <div class="app-main-column">
-        {{ template "breadcrumbs" . }}
+        {{ template "breadcrumbs" .Breadcrumbs }}
         <main
           id="main-content"
           class="{{ if eq .Active `media` }}app-media{{ end }}"
@@ -253,22 +265,22 @@
         >
           <div class="app-page-heading">
             <h1
-              class="govuk-heading-xl {{ if and .Events.Detail .Events.Detail.SourcePublishedAt }}
+              class="govuk-heading-xl {{ if .PublishedAt }}
                     govuk-!-margin-bottom-2
                   {{ end }}"
             >
               {{ .Title }}
             </h1>
-            {{ with .Events.Detail }} {{ if .SourcePublishedAt }}
+            {{ if .PublishedAt }}
             <p class="govuk-body-s app-publication-date">
               Veröffentlicht am
-              <time datetime="{{ .SourcePublishedAt }}"
-                >{{ .SourceDateLabel }}</time
+              <time datetime="{{ .PublishedAt }}"
+                >{{ .PublishedLabel }}</time
               >
             </p>
-            {{ end }} {{ end }}
+            {{ end }}
           </div>
-          <div class="app-content">{{ template "content" . }}</div>
+          <div class="app-content">{{ template "content" .Content }}</div>
         </main>
       </div>
     </div>
@@ -278,13 +290,13 @@
       <div class="govuk-width-container">
         <div class="app-page-feedback__prompt">
           <form action="/feedback" method="get" class="app-page-feedback__question" data-page-feedback>
-            <input type="hidden" name="path" value="{{ .Feedback.Path }}" />
+            <input type="hidden" name="path" value="{{ .FeedbackPath }}" />
             <p>Ist diese Seite hilfreich?</p>
             <button type="submit" name="value" value="yes">Ja<span class="govuk-visually-hidden">, diese Seite ist hilfreich</span></button>
             <button type="submit" name="value" value="no">Nein<span class="govuk-visually-hidden">, diese Seite ist nicht hilfreich</span></button>
           </form>
           <form action="/feedback" method="get" class="app-page-feedback__report" data-page-feedback>
-            <input type="hidden" name="path" value="{{ .Feedback.Path }}" />
+            <input type="hidden" name="path" value="{{ .FeedbackPath }}" />
             <button type="submit" name="value" value="problem">Ein Problem mit dieser Seite melden</button>
           </form>
         </div>
@@ -339,21 +351,19 @@
         </div>
       </div>
     </footer>
-    {{ if and .SignedIn (ne .Active "session-expired") (ne .Active "login") }}{{ template "session-warning" . }}{{ end }}
+    {{ if and .SignedIn (ne .Active "session-expired") (ne .Active "login") }}{{ template "session-warning" .SessionWarning }}{{ end }}
   </body>
 </html>
-{{ end }} {{ define "exams-content" }} {{ if and .Submission (not
-.Submission.Reviewing) (eq .Submission.Entry.Status "pending") }}
+{{ end }} {{ define "exams-content" }} {{ if .PendingSubmission }}
 <div class="govuk-panel govuk-panel--confirmation">
   <h1 class="govuk-panel__title">{{ .Title }}</h1>
 </div>
 {{ else }}
 <h1 class="govuk-heading-xl">{{ .Title }}</h1>
-{{ end }} {{ template "content" . }} {{ end }} {{ define "breadcrumbs" }} {{ if
-.Breadcrumbs }}
+{{ end }} {{ template "content" .Content }} {{ end }} {{ define "breadcrumbs" }} {{ if . }}
 <nav class="govuk-breadcrumbs" aria-label="Brotkrümelnavigation">
   <ol class="govuk-breadcrumbs__list">
-    {{ range .Breadcrumbs }}
+    {{ range . }}
     <li class="govuk-breadcrumbs__list-item">
       <a class="govuk-breadcrumbs__link" href="{{ .URL }}">{{ .Title }}</a>
     </li>
@@ -368,7 +378,7 @@
       <a
         class="govuk-link govuk-link--no-visited-state govuk-link--no-underline"
         href="/posts"
-        aria-current="{{- if eq .Active `posts` -}}{{- if or .Posts.Thread .Editor -}}true{{- else -}}page{{- end -}}{{- else -}}false{{- end -}}"
+        aria-current="{{- if eq .Active `posts` -}}{{- if .PostsNested -}}true{{- else -}}page{{- end -}}{{- else -}}false{{- end -}}"
         >Forum</a
       >
     </li>
@@ -376,7 +386,7 @@
       <a
         class="govuk-link govuk-link--no-visited-state govuk-link--no-underline"
         href="/news"
-        aria-current="{{- if eq .Active `news` -}}{{- if or .Posts.Thread .Editor -}}true{{- else -}}page{{- end -}}{{- else -}}false{{- end -}}"
+        aria-current="{{- if eq .Active `news` -}}{{- if .PostsNested -}}true{{- else -}}page{{- end -}}{{- else -}}false{{- end -}}"
         >Ankündigungen</a
       >
     </li>
@@ -387,7 +397,7 @@
       <a
         class="govuk-link govuk-link--no-visited-state govuk-link--no-underline"
         href="/events"
-        aria-current="{{- if eq .Active `events` -}}{{- if or .Events.Detail .Posts.Thread .Editor -}}
+        aria-current="{{- if eq .Active `events` -}}{{- if .EventsNested -}}
               true
             {{- else -}}
               page
@@ -399,7 +409,7 @@
       <a
         class="govuk-link govuk-link--no-visited-state govuk-link--no-underline"
         href="/media"
-        aria-current="{{- if eq .Active `media` -}}{{- if .Media.Detail -}}true{{- else -}}page{{- end -}}{{- else -}}false{{- end -}}"
+        aria-current="{{- if eq .Active `media` -}}{{- if .MediaNested -}}true{{- else -}}page{{- end -}}{{- else -}}false{{- end -}}"
         >Fotos</a
       >
     </li>
@@ -427,13 +437,12 @@
       >
       {{ if eq .Active "team" }}
       <ul class="govuk-list app-subnav app-subnav--nested">
-        {{ range .Team }}
+        {{ range .TeamLinks }}
         <li>
           <a
             class="govuk-link govuk-link--no-visited-state govuk-link--no-underline"
-            href="/team#team-{{ .ID }}"
-            >{{ if eq .ID "project" }}Projektstellen{{ else }}{{ .Title }}{{ end
-            }}</a
+            href="{{ .URL }}"
+            >{{ .Title }}</a
           >
         </li>
         {{ end }}
