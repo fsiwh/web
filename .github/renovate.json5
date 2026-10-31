@@ -42,7 +42,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": ["/^\\.github/workflows/ci\\.yaml$/"],
-      "matchStrings": ["go run (?<depName>github\\.com/rhysd/actionlint|golang\\.org/x/vuln)/cmd/\\w+@(?<currentValue>v[0-9.]+)"],
+      "matchStrings": ["go (?:-C tools )?run (?<depName>github\\.com/rhysd/actionlint|golang\\.org/x/vuln)/cmd/\\w+@(?<currentValue>v[0-9.]+)"],
       "datasourceTemplate": "go"
     },
     {
@@ -78,8 +78,15 @@
         "commands": ["node .github/renovate/update-locks.mjs --go"],
         "installTools": { "nix": {}, "golang": {} },
         "executionMode": "branch",
-        "fileFilters": ["flake.nix", "flake.lock", "go.mod", "go.sum", "Dockerfile", "internal/database/**", ".github/release/bun.lock"]
+        "fileFilters": ["flake.nix", "flake.lock", "go.mod", "go.sum", "tools/go.mod", "tools/go.sum", "Dockerfile", "internal/database/**", ".github/release/bun.lock"]
       }
+    },
+    {
+      "description": "Update SQLite and its validated libc dependency together.",
+      "matchManagers": ["gomod"],
+      "matchDepNames": ["modernc.org/sqlite", "modernc.org/libc"],
+      "groupName": "sqlite",
+      "matchFileNames": ["go.mod"]
     },
     {
       "matchDepNames": ["go", "golang", "nixpkgs"],
@@ -132,7 +139,7 @@
         "commands": ["node .github/renovate/update-locks.mjs --go"],
         "installTools": { "nix": {}, "golang": {} },
         "executionMode": "branch",
-        "fileFilters": ["flake.nix", "go.mod", "go.sum", "Dockerfile", "**/*.go"]
+        "fileFilters": ["flake.nix", "go.mod", "go.sum", "tools/go.mod", "tools/go.sum", "Dockerfile", "**/*.go"]
       }
     },
     {
@@ -141,7 +148,7 @@
         "commands": ["node .github/renovate/update-locks.mjs --go"],
         "installTools": { "nix": {}, "golang": {} },
         "executionMode": "branch",
-        "fileFilters": ["flake.nix", "go.mod", "go.sum", "Dockerfile"]
+        "fileFilters": ["flake.nix", "go.mod", "go.sum", "tools/go.mod", "tools/go.sum", "Dockerfile"]
       }
     },
     {

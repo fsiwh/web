@@ -4,94 +4,215 @@ import (
 	"context"
 	"errors"
 	"io"
-	"strconv"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+	"unicode/utf8"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/fachschaftinformatik/web/internal/config"
 	"github.com/fachschaftinformatik/web/storage"
-	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 type Client struct {
-	minioClient *minio.Client
-	bucket      string
+	s3       *awss3.Client
+	uploader *transfermanager.Client
+	bucket   string
 }
 
 func NewClient(cfg *config.Config) (*Client, error) {
-	client, err := minio.New(cfg.S3Endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.S3AccessKey, cfg.S3SecretKey, ""),
-		Secure: cfg.S3UseSSL,
-	})
-	if err != nil {
-		return nil, err
+	scheme := "http"
+	if cfg.S3UseSSL {
+		scheme = "https"
 	}
-
+	endpoint, err := url.Parse(scheme + "://" + cfg.S3Endpoint)
+	if err != nil || endpoint.Hostname() == "" || endpoint.User != nil || endpoint.Path != "" || endpoint.RawQuery != "" || endpoint.Fragment != "" {
+		return nil, errors.New("invalid S3 endpoint: expected host with optional port")
+	}
+	// Accept bucket names, never access-point ARNs that can override the endpoint.
+	if !validBucket(cfg.S3Bucket) {
+		return nil, errors.New("invalid S3 bucket name")
+	}
+	region := cfg.S3Region
+	if region == "" {
+		region = "us-east-1"
+	}
+	client := awss3.New(awss3.Options{
+		Region: region, BaseEndpoint: aws.String(endpoint.String()), UsePathStyle: true,
+		Credentials: credentials.NewStaticCredentialsProvider(cfg.S3AccessKey, cfg.S3SecretKey, ""),
+		HTTPClient: &http.Client{
+			Timeout: 2 * time.Minute,
+			// Do not send signed requests or upload bodies to a redirected host.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		},
+		// Preserve compatibility with S3-compatible stores without optional checksum APIs.
+		RequestChecksumCalculation: aws.RequestChecksumCalculationWhenRequired,
+		ResponseChecksumValidation: aws.ResponseChecksumValidationWhenRequired,
+	})
 	return &Client{
-		minioClient: client,
-		bucket:      cfg.S3Bucket,
+		s3: client, bucket: cfg.S3Bucket,
+		uploader: transfermanager.New(client, func(o *transfermanager.Options) {
+			o.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+		}),
 	}, nil
 }
 
 func (c *Client) EnsureBucket(ctx context.Context) error {
-	exists, err := c.minioClient.BucketExists(ctx, c.bucket)
-	if err != nil {
+	_, err := c.s3.HeadBucket(ctx, &awss3.HeadBucketInput{Bucket: aws.String(c.bucket)})
+	if err == nil {
+		return nil
+	}
+	if !hasCode(err, "NotFound", "NoSuchBucket") {
 		return err
 	}
-
-	if !exists {
-		err = c.minioClient.MakeBucket(ctx, c.bucket, minio.MakeBucketOptions{})
-		if err != nil {
-			return err
-		}
+	input := &awss3.CreateBucketInput{Bucket: aws.String(c.bucket)}
+	if region := c.s3.Options().Region; region != "us-east-1" {
+		input.CreateBucketConfiguration = &types.CreateBucketConfiguration{LocationConstraint: types.BucketLocationConstraint(region)}
 	}
-	return nil
+	_, err = c.s3.CreateBucket(ctx, input)
+	return err
 }
 
 func (c *Client) Upload(ctx context.Context, key string, reader io.Reader, size int64, contentType string) error {
-	_, err := c.minioClient.PutObject(ctx, c.bucket, key, reader, size, minio.PutObjectOptions{
-		ContentType: contentType,
+	if err := validateKey(key); err != nil {
+		return err
+	}
+	if size < 0 {
+		return errors.New("invalid object size")
+	}
+	reader = &exactSizeReader{reader: reader, remaining: size}
+	_, err := c.uploader.UploadObject(ctx, &transfermanager.UploadObjectInput{
+		Bucket: aws.String(c.bucket), Key: aws.String(key), Body: reader,
+		ContentLength: aws.Int64(size), ContentType: aws.String(contentType),
 	})
 	return err
 }
 
 func (c *Client) GetObject(ctx context.Context, key string) (*storage.Object, error) {
-	minioObj, err := c.minioClient.GetObject(ctx, c.bucket, key, minio.GetObjectOptions{})
-	if err != nil {
+	if err := validateKey(key); err != nil {
 		return nil, err
 	}
-
-	stat, err := minioObj.Stat()
+	object, err := c.s3.GetObject(ctx, &awss3.GetObjectInput{Bucket: aws.String(c.bucket), Key: aws.String(key)})
 	if err != nil {
-		minioObj.Close()
-		code := minio.ToErrorResponse(err).Code
-		if code == "NoSuchKey" || code == "NoSuchObject" || code == "NotFound" {
+		if hasCode(err, "NoSuchKey", "NoSuchObject", "NotFound") {
 			return nil, errors.Join(storage.ErrNotFound, err)
 		}
 		return nil, err
 	}
 
 	return &storage.Object{
-		ReadCloser: minioObj,
+		ReadCloser: object.Body,
 		Info: storage.ObjectInfo{
-			ContentType: stat.ContentType,
-			Size:        stat.Size,
-			ETag:        strconv.Quote(stat.ETag),
-			Modified:    stat.LastModified,
+			ContentType: aws.ToString(object.ContentType),
+			Size:        aws.ToInt64(object.ContentLength),
+			ETag:        aws.ToString(object.ETag),
+			Modified:    aws.ToTime(object.LastModified),
 		},
 	}, nil
 }
 
 func (c *Client) Delete(ctx context.Context, key string) error {
-	return c.minioClient.RemoveObject(ctx, c.bucket, key, minio.RemoveObjectOptions{})
+	if err := validateKey(key); err != nil {
+		return err
+	}
+	_, err := c.s3.DeleteObject(ctx, &awss3.DeleteObjectInput{Bucket: aws.String(c.bucket), Key: aws.String(key)})
+	return err
 }
 
 func (c *Client) CopyObject(ctx context.Context, srcKey, dstKey string) error {
-	_, err := c.minioClient.CopyObject(ctx, minio.CopyDestOptions{
-		Bucket: c.bucket,
-		Object: dstKey,
-	}, minio.CopySrcOptions{
-		Bucket: c.bucket,
-		Object: srcKey,
+	if err := validateKey(srcKey); err != nil {
+		return err
+	}
+	if err := validateKey(dstKey); err != nil {
+		return err
+	}
+	_, err := c.s3.CopyObject(ctx, &awss3.CopyObjectInput{
+		Bucket: aws.String(c.bucket), Key: aws.String(dstKey),
+		CopySource: aws.String(strings.ReplaceAll(url.QueryEscape(c.bucket+"/"+srcKey), "+", "%20")),
 	})
 	return err
+}
+
+// Keys are generated by the application. Reject ambiguous paths rather than
+// cleaning them into a different object, including across S3-compatible proxies.
+func validateKey(key string) error {
+	if key == "" || len(key) > 1024 || !utf8.ValidString(key) || strings.ContainsAny(key, "\\") {
+		return errors.New("invalid object key")
+	}
+	for _, part := range strings.Split(key, "/") {
+		if part == "" || part == "." || part == ".." {
+			return errors.New("invalid object key")
+		}
+	}
+	for _, r := range key {
+		if r < 32 || r == 127 {
+			return errors.New("invalid object key")
+		}
+	}
+	return nil
+}
+
+func validBucket(bucket string) bool {
+	if len(bucket) < 3 || len(bucket) > 63 {
+		return false
+	}
+	for _, label := range strings.Split(bucket, ".") {
+		if label == "" || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, r := range label {
+			if !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '-') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Transfer Manager buffers streams before upload; reject mismatches before it
+// commits the object, without reading an unbounded caller-provided stream.
+type exactSizeReader struct {
+	reader    io.Reader
+	remaining int64
+}
+
+func (r *exactSizeReader) Read(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if r.remaining == 0 {
+		var extra [1]byte
+		n, err := r.reader.Read(extra[:])
+		if n > 0 {
+			return 0, errors.New("object size does not match input")
+		}
+		return 0, err
+	}
+	if int64(len(p)) > r.remaining {
+		p = p[:r.remaining]
+	}
+	n, err := r.reader.Read(p)
+	r.remaining -= int64(n)
+	if err == io.EOF && r.remaining > 0 {
+		err = io.ErrUnexpectedEOF
+	}
+	return n, err
+}
+
+func hasCode(err error, codes ...string) bool {
+	var apiError smithy.APIError
+	if errors.As(err, &apiError) {
+		for _, code := range codes {
+			if apiError.ErrorCode() == code {
+				return true
+			}
+		}
+	}
+	return false
 }

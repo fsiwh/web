@@ -57,6 +57,8 @@ if (options.has("--go")) {
   ).trim();
   if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Invalid locked Go version");
   const updatedGoMod = goMod.replace(/^go [\d.]+$/m, `go ${version}`);
+  const toolsGoMod = await readFile("tools/go.mod", "utf8");
+  const updatedToolsGoMod = toolsGoMod.replace(/^go [\d.]+$/m, `go ${version}`);
   const dockerfile = await readFile("Dockerfile", "utf8");
   const image = dockerfile.match(/golang:([^\s]+)-alpine@(sha256:[a-f0-9]{64})/);
   if (!image) throw new Error("Missing digest-pinned Go build image");
@@ -77,12 +79,26 @@ if (options.has("--go")) {
     }
     updatedDockerfile = dockerfile.replace(image[0], `golang:${version}-alpine@${digest}`);
   }
-  if (options.has("--check") && (goMod !== updatedGoMod || dockerfile !== updatedDockerfile)) {
+  if (options.has("--check") && (goMod !== updatedGoMod || toolsGoMod !== updatedToolsGoMod || dockerfile !== updatedDockerfile)) {
     throw new Error("Go module, Nix and Docker toolchain versions need synchronization");
   }
   if (!options.has("--check")) {
     if (goMod !== updatedGoMod) await writeFile("go.mod", updatedGoMod);
+    if (toolsGoMod !== updatedToolsGoMod) await writeFile("tools/go.mod", updatedToolsGoMod);
     if (dockerfile !== updatedDockerfile) await writeFile("Dockerfile", updatedDockerfile);
+  }
+  // SQLite's transpiled code is validated against an exact libc version.
+  const sqlite = JSON.parse(execFileSync("go", ["list", "-m", "-json", "modernc.org/sqlite"], { encoding: "utf8" }));
+  const sqliteGoMod = JSON.parse(execFileSync("go", ["mod", "edit", "-json", sqlite.GoMod], { encoding: "utf8" }));
+  const expectedLibc = sqliteGoMod.Require.find(({ Path }) => Path === "modernc.org/libc")?.Version;
+  const actualLibc = execFileSync("go", ["list", "-m", "-f", "{{.Version}}", "modernc.org/libc"], { encoding: "utf8" }).trim();
+  if (!expectedLibc || actualLibc !== expectedLibc) {
+    throw new Error(`SQLite ${sqlite.Version} requires libc ${expectedLibc}, selected ${actualLibc}`);
+  }
+  console.log(`Verified SQLite/libc compatibility: ${sqlite.Version} / ${actualLibc}`);
+  if (!options.has("--check")) {
+    execFileSync("go", ["mod", "tidy", "-C", "tools"], { stdio: "inherit" });
+    execFileSync("go", ["generate", "./internal/database"], { stdio: "inherit" });
   }
   const directory = await mkdtemp(join(tmpdir(), "web-vendor-"));
   try {

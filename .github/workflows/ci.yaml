@@ -41,9 +41,9 @@ jobs:
           path: |
             ${{ runner.temp }}/go-build
             ${{ runner.temp }}/go-mod
-          key: ${{ runner.os }}-${{ runner.arch }}-go-v1-${{ hashFiles('go.mod', 'go.sum', 'flake.lock') }}-${{ github.sha }}
+          key: ${{ runner.os }}-${{ runner.arch }}-go-v1-${{ hashFiles('go.mod', 'go.sum', 'tools/go.mod', 'tools/go.sum', 'flake.lock') }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-go-v1-${{ hashFiles('go.mod', 'go.sum', 'flake.lock') }}-
+            ${{ runner.os }}-${{ runner.arch }}-go-v1-${{ hashFiles('go.mod', 'go.sum', 'tools/go.mod', 'tools/go.sum', 'flake.lock') }}-
             ${{ runner.os }}-${{ runner.arch }}-go-v1-
       - run: |
           formatting=$(nix develop -c gofmt -l ./*.go internal model site storage view)
@@ -53,7 +53,8 @@ jobs:
       - name: Verify generated database queries
         run: |
           nix develop -c go mod tidy
-          git diff --exit-code -- go.mod go.sum
+          nix develop -c go mod tidy -C tools
+          git diff --exit-code -- go.mod go.sum tools/go.mod tools/go.sum
           nix develop -c go generate ./internal/database
           git diff --exit-code -- internal/database
       - name: Verify dependency hashes
@@ -84,6 +85,8 @@ jobs:
             ${{ runner.temp }}/coverage.json
           if-no-files-found: error
       - run: nix develop -c go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - name: Check development tool vulnerabilities
+        run: nix develop -c go -C tools run golang.org/x/vuln/cmd/govulncheck@v1.9.0 github.com/sqlc-dev/sqlc/cmd/sqlc
 
   test-assets:
     name: test:assets
