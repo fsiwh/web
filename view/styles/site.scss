@@ -1,4 +1,27 @@
 /* Documentation-site shell, based on design-system.service.gov.uk/get-started/. */
+.app-storage-notice {
+  padding-top: 20px;
+  border-bottom: 10px solid transparent;
+  color: var(--govuk-surface-text-colour, #0b0c0c);
+  background-color: var(--govuk-surface-background-colour, #f4f8fb);
+}
+
+.app-storage-notice[hidden] {
+  display: none;
+}
+
+.app-storage-notice__message {
+  margin-bottom: -10px;
+}
+
+@media print {
+  .app-storage-notice {
+    border-bottom-color: currentcolor;
+    color: var(--govuk-print-text-colour, #000);
+    background-color: transparent;
+  }
+}
+
 .app-link-button {
   padding: 0;
   border: 0;

@@ -101,6 +101,8 @@
               install -m 0644 site.css editor.css "$out/"
               install -m 0644 js/site.js js/editor.js "$out/"
               install -m 0644 govuk/dist/govuk/govuk-frontend.min.js "$out/govuk.js"
+              # The upstream map is not distributed with our production bundle.
+              sed -i 's|//# sourceMappingURL=.*$||' "$out/govuk.js"
               install -m 0644 govuk/dist/govuk/assets/fonts/*.woff2 "$out/fonts/"
               install -m 0644 ${govukLicense} "$out/GOVUK-LICENSE.txt"
               install -m 0644 htmx/dist/htmx.min.js "$out/htmx.js"
