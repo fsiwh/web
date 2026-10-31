@@ -39,6 +39,32 @@ func TestSubmissionDecisionEmails(t *testing.T) {
 
 func testSubmissionEmail(t *testing.T, send func(*Sender) error, path, content string) {
 	t.Helper()
+	message, err := mail.ReadMessage(bytes.NewReader(captureEmail(t, nil, send)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, params, err := mime.ParseMediaType(message.Header.Get("Content-Type"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := multipart.NewReader(message.Body, params["boundary"])
+	for range 2 {
+		part, err := parts.NextPart()
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(part)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), "https://fsi-wh.de"+path) || !strings.Contains(string(body), "Einreichung") || !strings.Contains(string(body), content) || strings.Contains(string(body), "token=") {
+			t.Fatal("submission notification lost its link or expected content", string(body))
+		}
+	}
+}
+
+func captureEmail(t *testing.T, org *organization.Store, send func(*Sender) error) []byte {
+	t.Helper()
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -75,32 +101,11 @@ func testSubmissionEmail(t *testing.T, send func(*Sender) error, path, content s
 		}
 	}()
 	host, port, _ := net.SplitHostPort(listener.Addr().String())
-	sender := NewSender(&config.Config{Domain: "https://fsi-wh.de", SMTPHost: host, SMTPPort: port, SMTPFrom: "web@example.org"}, nil)
+	sender := NewSender(&config.Config{Domain: "https://fsi-wh.de", SMTPHost: host, SMTPPort: port, SMTPFrom: "web@example.org"}, org)
 	if err := send(sender); err != nil {
 		t.Fatal(err)
 	}
-	message, err := mail.ReadMessage(bytes.NewReader(<-received))
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, params, err := mime.ParseMediaType(message.Header.Get("Content-Type"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	parts := multipart.NewReader(message.Body, params["boundary"])
-	for range 2 {
-		part, err := parts.NextPart()
-		if err != nil {
-			t.Fatal(err)
-		}
-		body, err := io.ReadAll(part)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(body), "https://fsi-wh.de"+path) || !strings.Contains(string(body), "Einsendung") || !strings.Contains(string(body), content) || strings.Contains(string(body), "token=") {
-			t.Fatal("submission notification lost its link or expected content", string(body))
-		}
-	}
+	return <-received
 }
 
 func TestRemoteSMTPWithoutTLSDoesNotReceiveMessage(t *testing.T) {
@@ -274,6 +279,9 @@ func TestNotificationFeedbackTextCannotInjectMIME(t *testing.T) {
 		}
 		if kind == "text/html" && (bytes.Contains(body, []byte("<script>")) || !bytes.Contains(body, []byte("&lt;script&gt;"))) {
 			t.Fatal("feedback HTML was not escaped")
+		}
+		if kind == "text/html" && !bytes.Contains(body, []byte("First line<br />Bcc: attacker@example.org")) {
+			t.Fatal("feedback HTML collapsed the submitted line breaks")
 		}
 	}
 	if _, err := parts.NextPart(); err != io.EOF {

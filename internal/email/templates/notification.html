@@ -59,9 +59,9 @@
                 <p style="margin: 0 0 20px; font-size: 19px; line-height: 1.5;">
                   Hallo {{ .Name }},
                 </p>
-                <p style="margin: 0 0 20px; font-size: 19px; line-height: 1.5;">{{ .Intro }}</p>
+                <p style="margin: 0 0 20px; font-size: 19px; line-height: 1.5;">{{ template "email-lines" .Intro }}</p>
                 <p
-                  style="margin: 0 0 20px; font-size: 19px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-all;"
+                  style="margin: 0 0 20px; font-size: 19px; line-height: 1.5;"
                 >
                   {{ .Action }}:<br /><a
                     href="{{ .Link }}"
@@ -69,25 +69,16 @@
                     >{{ .Link }}</a
                   >
                 </p>
-                <p style="margin: 0 0 30px; font-size: 19px; line-height: 1.5;">{{ .Validity }}</p>
-                <p style="margin: 0 0 30px; font-size: 19px; line-height: 1.5;">{{ .Note }}</p>
+                {{ if .Validity }}<p style="margin: 0 0 30px; font-size: 19px; line-height: 1.5;">{{ template "email-lines" .Validity }}</p>{{ end }}
+                {{ if .Note }}<p style="margin: 0 0 30px; font-size: 19px; line-height: 1.5;">{{ template "email-lines" .Note }}</p>{{ end }}
                 <p style="margin: 0; font-size: 19px; line-height: 1.5;">
-                  Deine
-                  {{ .Organization.ShortName }}
+                  Deine Fachschaft
                 </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 25px 20px; border-top: 1px solid #b1b4b6;">
-                <p style="margin: 0 0 10px; font-size: 16px; line-height: 1.5;">
-                  {{ .Organization.ShortName }} ·
-                  {{ .Organization.Institution }}
-                </p>
-                <p style="margin: 0; font-size: 16px; line-height: 1.5;">
+                <p style="margin: 20px 0 0; font-size: 19px; line-height: 1.5;">
                   <a
                     href="{{ .Domain }}/contact"
-                    style="color: #0b0c0c; text-decoration: underline;"
-                    >Fachschaft kontaktieren</a
+                    style="color: #1d70b8; text-decoration: underline;"
+                    >Kontakt aufnehmen</a
                   >
                 </p>
               </td>
@@ -98,3 +89,4 @@
     </table>
   </body>
 </html>
+{{ define "email-lines" }}{{ range $index, $line := lines . }}{{ if $index }}<br />{{ end }}{{ $line }}{{ end }}{{ end }}
