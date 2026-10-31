@@ -1,5 +1,8 @@
 {{ define "sidebar" }}{{ end }}
 {{ define "content" }}
+  {{ template "home/content" . }}
+{{ end }}
+{{ define "home/content" }}
   <div class="app-masthead">
     <div class="govuk-width-container">
       <div class="app-masthead__layout">
@@ -33,7 +36,7 @@
           </div>
         </div>
         <div>
-          {{ $albums := .Media.CarouselAlbums }}
+          {{ $albums := .Albums }}
           {{ if $albums }}
             <section class="app-event-carousel" aria-label="Bilder aus der Fachschaft">
               <div class="app-event-carousel__controls" hidden>
@@ -110,16 +113,16 @@
       <div class="app-home-featured">
         <section class="app-featured-section" aria-labelledby="home-events">
           <h2 class="govuk-heading-m" id="home-events">Veranstaltungen</h2>
-          {{ if .Home.Events }}
-            {{ with index .Home.Events 0 }}
+          {{ if .Events }}
+            {{ with index .Events 0 }}
               <article class="app-featured-card app-featured-card--large">
                 {{ template "home-event-text-large" . }}
                 {{ template "home-event-image" . }}
               </article>
             {{ end }}
-            {{ if gt (len .Home.Events) 1 }}
+            {{ if gt (len .Events) 1 }}
               <ul class="govuk-list app-featured-grid" role="list">
-              {{ range slice .Home.Events 1 }}
+              {{ range slice .Events 1 }}
                 <li class="app-featured-card">
                   <div class="app-featured-card__text">
                     {{ template "home-event-context" . }}
@@ -144,13 +147,19 @@
     </div>
   </div>
   <div class="govuk-width-container govuk-main-wrapper govuk-main-wrapper--l">
+    {{ template "home/announcements" .Announcements }}
+    {{ template "home/forum" .Posts }}
+    {{ template "home/organisation" . }}
+  </div>
+{{ end }}
+{{ define "home/announcements" }}
     <section class="app-home-latest" aria-labelledby="home-announcements">
       <h2 class="govuk-heading-m app-home-latest__heading" id="home-announcements">Ankündigungen</h2>
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-two-thirds">
-          {{ if .Home.Announcements }}
+          {{ if . }}
             <ul class="govuk-list app-home-latest__list" role="list">
-              {{ range .Home.Announcements }}
+              {{ range . }}
                 <li>
                   <h3 class="govuk-heading-s app-home-latest__title">
                     <a class="govuk-link" href="{{ .URL }}">{{ .Title }}</a>
@@ -168,13 +177,15 @@
         </div>
       </div>
     </section>
+{{ end }}
+{{ define "home/forum" }}
     <section class="app-home-latest" aria-labelledby="home-forum">
       <h2 class="govuk-heading-m app-home-latest__heading" id="home-forum">Aktuelle Beiträge</h2>
       <div class="govuk-grid-row">
         <div class="govuk-grid-column-two-thirds">
-        {{ if .Home.Posts }}
+        {{ if . }}
           <ul class="govuk-list app-home-latest__list" role="list">
-            {{ range .Home.Posts }}
+            {{ range . }}
               <li>
                 <h3 class="govuk-heading-s app-home-latest__title">
                   <a class="govuk-link" href="{{ .URL }}">{{ .Title }}</a>
@@ -183,7 +194,7 @@
                   <p class="govuk-body govuk-!-margin-bottom-2">{{ .Summary }}</p>
                 {{ end }}
                 <div class="app-post-meta">
-                  {{ template "vote" (voteControl $ .VoteURL "/#home-forum" .Title .Votes .UserVote) }}
+                  {{ template "vote" .Vote }}
                   <p class="govuk-body-s app-home-latest__metadata">
                     <span class="govuk-visually-hidden">Veröffentlicht am </span><time datetime="{{ .DateISO }}">{{ .Date }}</time>
                   </p>
@@ -198,6 +209,8 @@
         </div>
       </div>
     </section>
+{{ end }}
+{{ define "home/organisation" }}
     <section class="app-home-organisation app-home-about" aria-labelledby="home-what-we-do">
       <h2 class="govuk-heading-m app-home-organisation__heading" id="home-what-we-do">Was wir tun</h2>
       <div class="app-home-organisation__columns">
@@ -287,7 +300,6 @@
         </ul>
       </aside>
     </div>
-  </div>
 {{ end }}
 {{ define "home-event-context" }}
   <p class="govuk-body-s app-featured-context">

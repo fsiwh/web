@@ -1,4 +1,4 @@
-{{ define "sidebar" }}{{ if .Admin }}{{ template "admin-navigation" . }}{{ end }}{{ end }}
+{{ define "sidebar" }}{{ if .Admin }}{{ template "admin-navigation" .Admin.Navigation }}{{ end }}{{ end }}
 {{ define "content" }}
   {{ with .Submission }}
     {{ if .Error }}

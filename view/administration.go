@@ -80,6 +80,15 @@ type AdminGroup struct {
 	Links []AdminLink
 }
 
+type AdminNavigation struct {
+	Groups        []AdminGroup
+	Section, View string
+}
+
+func (a AdminPage) Navigation() AdminNavigation {
+	return AdminNavigation{Groups: a.Groups(), Section: a.Section, View: a.View}
+}
+
 func (a AdminPage) Groups() []AdminGroup {
 	var groups []AdminGroup
 	for _, link := range AdminLinks {

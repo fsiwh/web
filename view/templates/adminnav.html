@@ -1,6 +1,6 @@
 {{ define "admin-navigation" }}
   <nav class="app-section-nav" aria-label="Seiten der Verwaltung">
-    {{ range .Admin.Groups }}
+    {{ range .Groups }}
       <h2 class="app-subnav-theme">{{ .Title }}</h2>
       <ul class="govuk-list app-subnav">
         {{ range .Links }}
@@ -8,8 +8,8 @@
             <a
               class="govuk-link govuk-link--no-visited-state govuk-link--no-underline"
               href="{{ .URL }}"
-              {{ if eq $.Admin.Section .ID }}
-                aria-current="{{- if or (eq $.Admin.View "form") (eq $.Admin.View "settings-readonly") (eq $.Admin.View "user") (eq $.Admin.View "review") (eq $.Admin.View "reset") (eq $.Admin.View "regulation") -}}
+              {{ if eq $.Section .ID }}
+                aria-current="{{- if or (eq $.View "form") (eq $.View "settings-readonly") (eq $.View "user") (eq $.View "review") (eq $.View "reset") (eq $.View "regulation") -}}
                   true
                 {{- else -}}
                   page

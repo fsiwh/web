@@ -140,14 +140,20 @@ func (m MediaPage) CarouselAlbums() []Album {
 }
 
 type VoteControl struct {
-	Page                  Page
+	Page                  VoteIdentity
 	Action, Return, Label string
 	Score, Selected       int
 	Up, Down              int
 }
 
-func voteControl(page Page, action, back, label string, score, selected int) VoteControl {
-	v := VoteControl{Page: page, Action: action, Return: back, Label: label, Score: score, Selected: selected, Up: 1, Down: -1}
+// VoteIdentity contains only the session data needed to render a voting form.
+type VoteIdentity struct {
+	SignedIn bool
+	CSRF     string
+}
+
+func voteControl(page interface{ voteIdentity() VoteIdentity }, action, back, label string, score, selected int) VoteControl {
+	v := VoteControl{Page: page.voteIdentity(), Action: action, Return: back, Label: label, Score: score, Selected: selected, Up: 1, Down: -1}
 	if selected == 1 {
 		v.Up = 0
 	}

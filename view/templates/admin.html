@@ -1,4 +1,4 @@
-{{ define "sidebar" }}{{ template "admin-navigation" . }}{{ end }}
+{{ define "sidebar" }}{{ template "admin-navigation" .Admin.Navigation }}{{ end }}
 
 {{ define "content" }}
   {{ $csrf := .CSRF }}

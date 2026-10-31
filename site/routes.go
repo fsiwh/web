@@ -34,7 +34,7 @@ func (c *Handler) routes() http.Handler {
 	register("GET /session/expired", routePolicy{passive: true}, c.SessionExpired)
 	registerAdmin(c, register)
 	register("GET "+urls.DocumentPattern, routePolicy{}, c.Document)
-	register("GET "+urls.AssetsPath, routePolicy{passive: true}, http.StripPrefix(urls.AssetsPath, http.FileServerFS(view.Assets())).ServeHTTP)
+	register("GET "+urls.AssetsPath, routePolicy{passive: true, static: true}, http.StripPrefix(urls.AssetsPath, browserAssets()).ServeHTTP)
 	// Unknown routes do not run authentication or CSRF middleware.
 	router.HandleFunc("/", c.notFound)
 	return c.canonicalize(router)
