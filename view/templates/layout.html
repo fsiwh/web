@@ -37,8 +37,8 @@
           ? " govuk-frontend-supported"
           : "");
     </script>
-    {{ if ne .Active "cookies" }}
-    <div class="govuk-cookie-banner" data-cookie-banner role="region" aria-label="Cookies auf {{ .Organization.Name }}" data-nosnippet {{ if not .ShowCookieNotice }}hidden{{ end }}>
+    {{ if and (ne .Active "cookies") .ShowCookieNotice }}
+    <div class="govuk-cookie-banner" data-cookie-banner role="region" aria-label="Cookies auf {{ .Organization.Name }}" data-nosnippet>
       <div class="govuk-cookie-banner__message govuk-width-container">
         <div class="govuk-grid-row">
           <div class="govuk-grid-column-two-thirds">
