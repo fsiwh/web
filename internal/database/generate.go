@@ -1,3 +1,3 @@
 package database
 
-//go:generate go tool sqlc generate -f sqlite.yaml
+//go:generate go -C ../../tools tool sqlc generate -f ../internal/database/sqlite.yaml

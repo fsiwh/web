@@ -17,6 +17,7 @@ type Config struct {
 	SMTPFrom                            string
 	SMTPReplyTo                         string
 	S3Endpoint                          string
+	S3Region                            string
 	S3Bucket                            string
 	S3AccessKey                         string
 	S3SecretKey                         string
@@ -36,6 +37,7 @@ func New() *Config {
 		SMTPFrom:            getEnv("SMTP_FROM", ""),
 		SMTPReplyTo:         getEnv("SMTP_REPLY_TO", ""),
 		S3Endpoint:          getEnv("S3_ENDPOINT", ""),
+		S3Region:            getEnv("S3_REGION", "us-east-1"),
 		S3Bucket:            getEnv("S3_BUCKET", ""),
 		S3AccessKey:         getEnv("S3_ACCESS_KEY", ""),
 		S3SecretKey:         getEnv("S3_SECRET_KEY", ""),
