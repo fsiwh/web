@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fachschaftinformatik/web/view"
 
@@ -81,6 +82,7 @@ type mediaBlob struct {
 	storage.Provider
 	stream bool
 	keys   []string
+	etag   string
 }
 
 type seekablePhoto struct{ *strings.Reader }
@@ -96,7 +98,59 @@ func (s *mediaBlob) GetObject(ctx context.Context, key string) (*storage.Object,
 	if s.stream {
 		reader = io.NopCloser(strings.NewReader("image bytes"))
 	}
-	return &storage.Object{ReadCloser: reader, Info: storage.ObjectInfo{Size: 11, ContentType: "application/octet-stream"}}, nil
+	return &storage.Object{ReadCloser: reader, Info: storage.ObjectInfo{
+		Size: 11, ContentType: "application/octet-stream", ETag: s.etag,
+		Modified: time.Date(2026, 10, 31, 12, 0, 0, 0, time.UTC),
+	}}, nil
+}
+
+func TestMediaCacheRevalidation(t *testing.T) {
+	for _, stream := range []bool{false, true} {
+		t.Run(strconv.FormatBool(stream), func(t *testing.T) {
+			objects := &mediaBlob{stream: stream, etag: `"photo-v1"`}
+			c, db := liveMediaHandler(t, objects)
+			image := publicRef(t, db, "media", "101")
+			album := publicRef(t, db, "albums", "10")
+			router := http.NewServeMux()
+			router.HandleFunc("GET /images/{id}/{size}", c.MediaFile)
+			router.HandleFunc("GET /media/albums/{id}/cover/{size}", c.AlbumCover)
+			for _, path := range []string{"/images/" + image + "/400", "/media/albums/" + album + "/cover/400"} {
+				for _, tc := range []struct {
+					header, value string
+					status        int
+				}{
+					{"", "", http.StatusOK},
+					{"If-None-Match", `"photo-v1"`, http.StatusNotModified},
+					{"If-None-Match", `W/"photo-v1"`, http.StatusNotModified},
+					{"If-Modified-Since", "Sat, 31 Oct 2026 12:00:00 GMT", http.StatusNotModified},
+					{"If-None-Match", `"old-photo"`, http.StatusOK},
+				} {
+					w := httptest.NewRecorder()
+					r := httptest.NewRequest("GET", path, nil)
+					if tc.header != "" {
+						r.Header.Set(tc.header, tc.value)
+					}
+					router.ServeHTTP(w, r)
+					if w.Code != tc.status || w.Header().Get("ETag") != objects.etag || (tc.status == http.StatusOK && w.Header().Get("Last-Modified") == "") {
+						t.Fatalf("%s %s: status %d, headers %v", path, tc.header, w.Code, w.Header())
+					}
+					if tc.status == http.StatusNotModified && w.Body.Len() != 0 {
+						t.Fatal("revalidation retransmitted image bytes")
+					}
+				}
+			}
+			if _, err := db.Exec("UPDATE media SET deleted_at='2026-10-31T13:00:00Z' WHERE id=101"); err != nil {
+				t.Fatal(err)
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("GET", "/images/"+image+"/400", nil)
+			r.Header.Set("If-None-Match", objects.etag)
+			router.ServeHTTP(w, r)
+			if w.Code != http.StatusNotFound || w.Header().Get("Cache-Control") != "no-store" {
+				t.Fatalf("deleted image remained cacheable: %d %v", w.Code, w.Header())
+			}
+		})
+	}
 }
 
 func liveMediaHandler(t *testing.T, storage storage.Provider) (*Handler, *sql.DB) {
@@ -194,7 +248,7 @@ func TestMediaHTTPRangesAndPathProtections(t *testing.T) {
 					t.Errorf("%s %s range %s: status %d, body %q", tc.method, tc.path, tc.byteRange, r.Code, r.Body.String())
 				}
 				if tc.code == 200 || tc.code == 206 {
-					if r.Header().Get("Content-Type") != "image/jpeg" || r.Header().Get("Cache-Control") != "public, no-cache" || r.Header().Get("Content-Length") == "" || r.Header().Get("Accept-Ranges") != "bytes" {
+					if r.Header().Get("Content-Type") != "image/jpeg" || r.Header().Get("Cache-Control") != "private, max-age=300, must-revalidate" || r.Header().Get("Content-Length") == "" || r.Header().Get("Accept-Ranges") != "bytes" {
 						t.Errorf("missing image headers: %v", r.Header())
 					}
 					length := "11"

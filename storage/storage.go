@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 )
 
 var ErrNotFound = errors.New("blob object not found")
@@ -11,6 +12,8 @@ var ErrNotFound = errors.New("blob object not found")
 type ObjectInfo struct {
 	ContentType string
 	Size        int64
+	ETag        string
+	Modified    time.Time
 }
 
 type Object struct {

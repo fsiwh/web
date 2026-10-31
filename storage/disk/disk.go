@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"os"
@@ -53,7 +54,12 @@ func (s *Store) GetObject(ctx context.Context, key string) (*storage.Object, err
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
-	return &storage.Object{ReadCloser: file, Info: storage.ObjectInfo{ContentType: contentType, Size: info.Size()}}, nil
+	return &storage.Object{ReadCloser: file, Info: storage.ObjectInfo{
+		ContentType: contentType,
+		Size:        info.Size(),
+		ETag:        fmt.Sprintf(`W/"%x-%x"`, info.ModTime().UnixNano(), info.Size()),
+		Modified:    info.ModTime(),
+	}}, nil
 }
 
 type reader struct {
