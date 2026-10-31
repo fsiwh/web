@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strconv"
 
 	"github.com/fachschaftinformatik/web/internal/config"
 	"github.com/fachschaftinformatik/web/storage"
@@ -74,6 +75,8 @@ func (c *Client) GetObject(ctx context.Context, key string) (*storage.Object, er
 		Info: storage.ObjectInfo{
 			ContentType: stat.ContentType,
 			Size:        stat.Size,
+			ETag:        strconv.Quote(stat.ETag),
+			Modified:    stat.LastModified,
 		},
 	}, nil
 }

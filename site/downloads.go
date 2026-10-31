@@ -188,7 +188,11 @@ func (c *Handler) serveMediaObject(w http.ResponseWriter, r *http.Request, objec
 	}
 	w.Header().Set("Content-Type", object.Info.ContentType)
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	// Revalidate rather than retaining deleted photographs in a shared cache.
-	w.Header().Set("Cache-Control", "public, no-cache")
-	http.ServeContent(w, r, "image", time.Time{}, seeker)
+	// Keep photographs in the browser briefly, rather than in shared caches.
+	// Validators let refreshes reuse the body and allow mutable covers to change.
+	w.Header().Set("Cache-Control", "private, max-age=300, must-revalidate")
+	if object.Info.ETag != "" {
+		w.Header().Set("ETag", object.Info.ETag)
+	}
+	http.ServeContent(w, r, "image", object.Info.Modified, seeker)
 }
