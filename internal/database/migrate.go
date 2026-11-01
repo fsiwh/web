@@ -2,14 +2,12 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"embed"
 	"fmt"
 	"io/fs"
 	"log"
 
 	"github.com/pressly/goose/v3"
-	_ "modernc.org/sqlite"
 )
 
 //go:embed migrations/*.sql
@@ -17,21 +15,11 @@ var migrations embed.FS
 
 func Migrate(dsn string, logger *log.Logger) error {
 	logger.Println("Running database migrations...")
-	db, err := sql.Open("sqlite", dsn)
+	db, err := openConnection(dsn, true)
 	if err != nil {
 		return fmt.Errorf("goose: failed to open DB: %w", err)
 	}
 	defer db.Close()
-	// Table rebuilds must preserve references to the original table names. This
-	// connection is only used for migrations; runtime connections enforce FKs.
-	db.SetMaxOpenConns(1)
-	if _, err := db.Exec("PRAGMA foreign_keys=OFF"); err != nil {
-		return err
-	}
-
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("goose: failed to ping DB: %w", err)
-	}
 
 	files, err := fs.Sub(migrations, "migrations")
 	if err != nil {
@@ -43,6 +31,21 @@ func Migrate(dsn string, logger *log.Logger) error {
 	}
 	if _, err := provider.Up(context.Background()); err != nil {
 		return fmt.Errorf("goose: up failed: %w", err)
+	}
+	// Re-enabling enforcement does not validate rows written while it was off.
+	// Do not start the application with references broken by an upgrade or an
+	// earlier connection whose foreign-key enforcement was disabled.
+	rows, err := db.Query("PRAGMA foreign_key_check")
+	if err != nil {
+		return fmt.Errorf("goose: check foreign keys: %w", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		// Avoid logging row contents or account identifiers in startup errors.
+		return fmt.Errorf("goose: foreign-key violations remain after migration")
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("goose: check foreign keys: %w", err)
 	}
 
 	logger.Println("Migrations applied successfully.")

@@ -138,7 +138,7 @@ func (c *Handler) Admin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.View = "meetings"
-		records, err := c.meetings.AllWithError()
+		records, err := c.meetings.AllContext(r.Context())
 		if err != nil {
 			c.serverError(w, err)
 			return

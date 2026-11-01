@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fachschaftinformatik/web/internal/content"
+	"github.com/fachschaftinformatik/web/internal/database"
 	"github.com/fachschaftinformatik/web/internal/publicid"
 	"github.com/fachschaftinformatik/web/storage"
 )
@@ -33,24 +35,41 @@ func NewStore(db *sql.DB, provider storage.Provider) (*Store, error) {
 }
 
 func (s *Store) Save(p Publication) (err error) {
+	return s.SaveContext(context.Background(), p)
+}
+
+// Callers may impose a shorter deadline, including client disconnection.
+const operationTimeout = 30 * time.Second
+
+func publicationPermission(ctx context.Context, db database.DBTX, owner string) error {
+	id, err := strconv.ParseInt(owner, 10, 64)
+	if err != nil || id <= 0 || strconv.FormatInt(id, 10) != owner {
+		return content.ErrForbidden
+	}
+	var allowed bool
+	if err := db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE id=? AND active=1 AND verified=1 AND deleted_at IS NULL AND role IN ('admin','editor'))", id).Scan(&allowed); err != nil {
+		return err
+	}
+	if !allowed {
+		return content.ErrForbidden
+	}
+	return nil
+}
+
+func (s *Store) SaveContext(ctx context.Context, p Publication) (err error) {
+	ctx, cancel := context.WithTimeout(ctx, operationTimeout)
+	defer cancel()
 	ownerID, ownerErr := strconv.ParseInt(p.Owner, 10, 64)
 	if p.ID == "" || ownerErr != nil || ownerID <= 0 || strconv.FormatInt(ownerID, 10) != p.Owner || len(p.Data) > MaxPDFBytes {
 		return errors.New("Der Entwurf konnte nicht gespeichert werden.")
 	}
-	ctx := context.Background()
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	// Acquire SQLite's writer lock before reading ownership or uploading bytes.
-	if _, err = tx.ExecContext(ctx, "UPDATE meeting_publications SET id=id WHERE id=?", p.ID); err != nil {
+	if err := publicationPermission(ctx, s.db, p.Owner); err != nil {
 		return err
 	}
 	var owner string
 	var oldKey, oldDigest string
 	var published bool
-	err = tx.QueryRowContext(ctx, "SELECT owner,published,blob_key,sha256 FROM meeting_publications WHERE id=?", p.ID).Scan(&owner, &published, &oldKey, &oldDigest)
+	err = s.db.QueryRowContext(ctx, "SELECT owner,published,blob_key,sha256 FROM meeting_publications WHERE id=?", p.ID).Scan(&owner, &published, &oldKey, &oldDigest)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return err
 	}
@@ -66,12 +85,17 @@ func (s *Store) Save(p Publication) (err error) {
 	}
 	// Upload errors may leave partial objects. Always attempt compensation.
 	committed := false
+	var tx *sql.Tx
 	defer func() {
 		if !committed && upload {
-			tx.Rollback()
-			if cleanup := s.blobs.Delete(ctx, key); cleanup != nil {
+			if tx != nil {
+				tx.Rollback()
+			}
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
+			if cleanup := s.blobs.Delete(cleanupCtx, key); cleanup != nil {
 				err = errors.Join(err, fmt.Errorf("Datei konnte nicht entfernt werden: %w", cleanup))
-				_, queueErr := s.db.ExecContext(ctx, "INSERT OR IGNORE INTO meeting_blob_cleanup(blob_key) VALUES(?)", key)
+				_, queueErr := s.db.ExecContext(cleanupCtx, "INSERT OR IGNORE INTO meeting_blob_cleanup(blob_key) VALUES(?)", key)
 				err = errors.Join(err, queueErr)
 			}
 		}
@@ -80,6 +104,31 @@ func (s *Store) Save(p Publication) (err error) {
 		if err = s.blobs.Upload(ctx, key, bytes.NewReader(p.Data), int64(len(p.Data)), "application/pdf"); err != nil {
 			return err
 		}
+	}
+	// Objects have unique immutable keys. Upload first, then recheck ownership,
+	// publication and the previous key under a short writer transaction. A stale
+	// save must not resurrect a retired key or overwrite a concurrently saved PDF.
+	tx, err = s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err = tx.ExecContext(ctx, "UPDATE meeting_publications SET id=id WHERE id=?", p.ID); err != nil {
+		return err
+	}
+	if err := publicationPermission(ctx, tx, p.Owner); err != nil {
+		return err
+	}
+	var currentKey string
+	err = tx.QueryRowContext(ctx, "SELECT owner,published,blob_key FROM meeting_publications WHERE id=?", p.ID).Scan(&owner, &published, &currentKey)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if err == nil && (owner != p.Owner || published) {
+		return errors.New("Dieser Entwurf kann nicht geändert werden.")
+	}
+	if currentKey != oldKey {
+		return errors.New("Der Entwurf wurde inzwischen geändert. Lade ihn erneut.")
 	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO meeting_publications(id,owner,date,number,kind,filename,blob_key,bytes,sha256)
 	VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET date=excluded.date,number=excluded.number,kind=excluded.kind,
@@ -106,7 +155,7 @@ func (s *Store) Save(p Publication) (err error) {
 
 type publicationRow interface{ Scan(...any) error }
 
-func (s *Store) readPublication(row publicationRow) (Publication, bool, error) {
+func (s *Store) readPublication(ctx context.Context, row publicationRow) (Publication, bool, error) {
 	var p Publication
 	var key, digest string
 	var size int64
@@ -117,7 +166,7 @@ func (s *Store) readPublication(row publicationRow) (Publication, bool, error) {
 	if err != nil {
 		return p, false, err
 	}
-	object, err := s.blobs.GetObject(context.Background(), key)
+	object, err := s.blobs.GetObject(ctx, key)
 	if err != nil {
 		return p, false, err
 	}
@@ -136,21 +185,21 @@ func (s *Store) readPublication(row publicationRow) (Publication, bool, error) {
 const publicationColumns = "id,owner,date,number,kind,filename,blob_key,bytes,sha256,published"
 
 func (s *Store) GetWithError(id string) (Publication, bool, error) {
-	tx, err := s.db.BeginTx(context.Background(), nil)
-	if err != nil {
-		return Publication{}, false, err
+	return s.GetContext(context.Background(), id)
+}
+
+func (s *Store) GetContext(ctx context.Context, id string) (Publication, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, operationTimeout)
+	defer cancel()
+	// Download an immutable snapshot without occupying the SQL pool. A concurrent
+	// replacement may retire the selected key before GET opens it; one retry then
+	// loads the current snapshot. Never combine bytes with another row's metadata.
+	p, ok, err := s.readPublication(ctx, s.db.QueryRowContext(ctx, "SELECT "+publicationColumns+" FROM meeting_publications WHERE id=?", id))
+	if err != nil && ctx.Err() == nil {
+		p, ok, err = s.readPublication(ctx, s.db.QueryRowContext(ctx, "SELECT "+publicationColumns+" FROM meeting_publications WHERE id=?", id))
 	}
-	defer tx.Rollback()
-	// Serialize blob snapshots with replacement and cleanup across Store instances.
-	if _, err := tx.Exec("UPDATE meeting_publications SET id=id WHERE id=?", id); err != nil {
-		return Publication{}, false, err
-	}
-	p, ok, err := s.readPublication(tx.QueryRow("SELECT "+publicationColumns+" FROM meeting_publications WHERE id=?", id))
 	if err == nil && ok {
-		p.PublicID, err = publicid.Ensure(context.Background(), tx, "publications", p.ID)
-	}
-	if err == nil {
-		err = tx.Commit()
+		p.PublicID, err = publicid.Ensure(ctx, s.db, "publications", p.ID)
 	}
 	return p, ok, err
 }
@@ -167,7 +216,34 @@ func (s *Store) PublicID(ctx context.Context, internal string) (string, error) {
 }
 
 func (s *Store) Publish(id, owner string) error {
-	ctx := context.Background()
+	return s.PublishContext(context.Background(), id, owner)
+}
+
+func (s *Store) PublishContext(ctx context.Context, id, owner string) error {
+	ctx, cancel := context.WithTimeout(ctx, operationTimeout)
+	defer cancel()
+	if err := publicationPermission(ctx, s.db, owner); err != nil {
+		return err
+	}
+	var owns bool
+	if err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM meeting_publications WHERE id=? AND owner=?)", id, owner).Scan(&owns); err != nil {
+		return err
+	}
+	if !owns {
+		return errors.New("Dieser Entwurf wurde nicht gefunden.")
+	}
+	// Verify the immutable bytes outside the transaction. Comparing all metadata
+	// again under the writer lock prevents publishing a concurrently edited draft.
+	p, ok, err := s.GetContext(ctx, id)
+	if err != nil {
+		return err
+	}
+	if !ok || p.Owner != owner {
+		return errors.New("Dieser Entwurf wurde nicht gefunden.")
+	}
+	if len(ValidatePublication(p)) != 0 {
+		return errors.New("Prüfe die Angaben und die Datei.")
+	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -176,18 +252,22 @@ func (s *Store) Publish(id, owner string) error {
 	if _, err = tx.ExecContext(ctx, "UPDATE meeting_publications SET id=id WHERE id=?", id); err != nil {
 		return err
 	}
-	p, ok, err := s.readPublication(tx.QueryRowContext(ctx, "SELECT "+publicationColumns+" FROM meeting_publications WHERE id=?", id))
+	if err := publicationPermission(ctx, tx, owner); err != nil {
+		return err
+	}
+	var current Publication
+	var checksum string
+	var size int64
+	err = tx.QueryRowContext(ctx, "SELECT id,owner,date,number,kind,filename,bytes,sha256,published FROM meeting_publications WHERE id=?", id).Scan(&current.ID, &current.Owner, &current.Date, &current.Number, &current.Kind, &current.Filename, &size, &checksum, &current.Published)
 	if err != nil {
 		return err
 	}
-	if !ok || p.Owner != owner {
-		return errors.New("Dieser Entwurf wurde nicht gefunden.")
+	hash := sha256.Sum256(p.Data)
+	if current.Owner != owner || current.Date != p.Date || current.Number != p.Number || current.Kind != p.Kind || current.Filename != p.Filename || size != int64(len(p.Data)) || checksum != hex.EncodeToString(hash[:]) {
+		return errors.New("Der Entwurf wurde inzwischen geändert. Lade ihn erneut.")
 	}
-	if p.Published {
+	if current.Published {
 		return nil
-	}
-	if len(ValidatePublication(p)) != 0 {
-		return errors.New("Prüfe die Angaben und die Datei.")
 	}
 	date, _ := time.Parse("2006-01-02", p.Date)
 	conflict := errors.New("Datum und Sitzungsnummer stimmen nicht mit der vorhandenen Sitzung überein.")
@@ -226,11 +306,17 @@ func (s *Store) Publish(id, owner string) error {
 }
 
 func (s *Store) AllWithError() ([]Meeting, error) {
-	records, err := s.historical(context.Background(), s.db)
+	return s.AllContext(context.Background())
+}
+
+func (s *Store) AllContext(ctx context.Context) ([]Meeting, error) {
+	ctx, cancel := context.WithTimeout(ctx, operationTimeout)
+	defer cancel()
+	records, err := s.historical(ctx, s.db)
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.db.Query("SELECT id,date,number,kind,bytes FROM meeting_publications WHERE published=1 ORDER BY id")
+	rows, err := s.db.QueryContext(ctx, "SELECT id,date,number,kind,bytes FROM meeting_publications WHERE published=1 ORDER BY id")
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +337,7 @@ func (s *Store) AllWithError() ([]Meeting, error) {
 	}
 	rows.Close()
 	for i, p := range publications {
-		p.PublicID, err = publicid.Ensure(context.Background(), s.db, "publications", p.ID)
+		p.PublicID, err = publicid.Ensure(ctx, s.db, "publications", p.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -264,16 +350,11 @@ func (s *Store) AllWithError() ([]Meeting, error) {
 // CleanupBlobs retries at most 16 obsolete draft objects. Failed deletions remain
 // queued across restarts. Saves also invoke it after committing their changes.
 func (s *Store) CleanupBlobs(ctx context.Context) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	// Readers acquire the same SQLite writer lock until their bytes are buffered.
-	if _, err := tx.ExecContext(ctx, "UPDATE meeting_blob_cleanup SET blob_key=blob_key WHERE 0"); err != nil {
-		return err
-	}
-	rows, err := tx.QueryContext(ctx, `SELECT blob_key FROM meeting_blob_cleanup
+	ctx, cancel := context.WithTimeout(ctx, operationTimeout)
+	defer cancel()
+	// Retired keys are never reused: saves compare their pre-upload key inside
+	// the write transaction. Deleting these objects needs no SQL transaction.
+	rows, err := s.db.QueryContext(ctx, `SELECT blob_key FROM meeting_blob_cleanup
 	WHERE NOT EXISTS (SELECT 1 FROM meeting_publications p WHERE p.blob_key=meeting_blob_cleanup.blob_key)
 	ORDER BY attempts,blob_key LIMIT 16`)
 	if err != nil {
@@ -296,14 +377,14 @@ func (s *Store) CleanupBlobs(ctx context.Context) error {
 	for _, key := range keys {
 		if err := s.blobs.Delete(ctx, key); err != nil {
 			failures = errors.Join(failures, err)
-			if _, err := tx.ExecContext(ctx, "UPDATE meeting_blob_cleanup SET attempts=attempts+1 WHERE blob_key=?", key); err != nil {
+			if _, err := s.db.ExecContext(ctx, "UPDATE meeting_blob_cleanup SET attempts=attempts+1 WHERE blob_key=?", key); err != nil {
 				return errors.Join(failures, err)
 			}
 			continue
 		}
-		if _, err := tx.ExecContext(ctx, "DELETE FROM meeting_blob_cleanup WHERE blob_key=?", key); err != nil {
+		if _, err := s.db.ExecContext(ctx, "DELETE FROM meeting_blob_cleanup WHERE blob_key=?", key); err != nil {
 			return err
 		}
 	}
-	return errors.Join(failures, tx.Commit())
+	return failures
 }

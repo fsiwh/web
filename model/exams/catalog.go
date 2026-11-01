@@ -354,6 +354,12 @@ func parseDate(value string) (time.Time, error) {
 
 // Open retains the V1 key scheme and allows explicitly linked older revisions.
 func (s *Service) Open(ctx context.Context, userID int64, value string) (*storage.Object, error) {
+	ctx, cancel := context.WithTimeout(ctx, storageOperationTimeout)
+	defer cancel()
+	return s.open(ctx, userID, value, true)
+}
+
+func (s *Service) open(ctx context.Context, userID int64, value string, retry bool) (*storage.Object, error) {
 	role, err := accountRole(ctx, s.db, userID)
 	if err != nil {
 		return nil, err
@@ -365,16 +371,8 @@ func (s *Service) Open(ctx context.Context, userID int64, value string) (*storag
 	var size int64
 	var ownerID int64
 	var status Status
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, "UPDATE archive_blob_cleanup SET blob_key=blob_key WHERE 0"); err != nil {
-		return nil, err
-	}
 	var key, checksum string
-	err = tx.QueryRowContext(ctx, `SELECT a.nbytes,a.user_id,COALESCE(r.status,'approved'),COALESCE(o.blob_key,''),a.checksum FROM archive a LEFT JOIN archive_objects o ON o.checksum=a.checksum AND o.nbytes=a.nbytes LEFT JOIN archive_requests r ON r.id=a.request_id WHERE a.id=? AND a.deleted_at IS NULL AND a.mime_type='application/pdf'
+	err = s.db.QueryRowContext(ctx, `SELECT a.nbytes,a.user_id,COALESCE(r.status,'approved'),COALESCE(o.blob_key,''),a.checksum FROM archive a LEFT JOIN archive_objects o ON o.checksum=a.checksum AND o.nbytes=a.nbytes LEFT JOIN archive_requests r ON r.id=a.request_id WHERE a.id=? AND a.deleted_at IS NULL AND a.mime_type='application/pdf'
     AND EXISTS(SELECT 1 FROM archive_placements b JOIN modules m ON m.id=b.module_id AND m.deleted_at IS NULL JOIN programs p ON p.id=m.program_id AND p.deleted_at IS NULL WHERE b.archive_id=COALESCE((SELECT canonical_id FROM archive_entry_aliases WHERE legacy_id=a.id),a.id))`, id).Scan(&size, &ownerID, &status, &key, &checksum)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrNotFound
@@ -394,7 +392,12 @@ func (s *Service) Open(ctx context.Context, userID int64, value string) (*storag
 	}
 	object, err := s.storage.GetObject(ctx, key)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrStorage, err)
+		// Replacement/compaction can retire a key between metadata lookup and
+		// GET. Retry a fresh, authorized snapshot once; never mix its metadata.
+		if retry && errors.Is(err, storage.ErrNotFound) {
+			return s.open(ctx, userID, value, false)
+		}
+		return nil, fmt.Errorf("%w: %w", ErrStorage, err)
 	}
 	if object.Info.Size != size {
 		object.Close()
@@ -403,10 +406,26 @@ func (s *Service) Open(ctx context.Context, userID int64, value string) (*storag
 	contents, readErr := io.ReadAll(io.LimitReader(object, size+1))
 	readErr = errors.Join(readErr, object.Close())
 	if readErr != nil {
-		return nil, fmt.Errorf("%w: %v", ErrStorage, readErr)
+		return nil, fmt.Errorf("%w: %w", ErrStorage, readErr)
 	}
 	if int64(len(contents)) != size || verify && fmt.Sprintf("%x", sha256.Sum256(contents)) != checksum {
 		return nil, fmt.Errorf("%w: stored checksum or size differs", ErrStorage)
+	}
+	// Authorization may have been revoked during a slow download. The storage
+	// body is already buffered, so this check holds no transaction across I/O.
+	role, err = accountRole(ctx, s.db, userID)
+	if err != nil {
+		return nil, err
+	}
+	err = s.db.QueryRowContext(ctx, `SELECT a.user_id,COALESCE(r.status,'approved') FROM archive a LEFT JOIN archive_requests r ON r.id=a.request_id WHERE a.id=? AND a.deleted_at IS NULL`, id).Scan(&ownerID, &status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if status != Approved && ownerID != userID && !(status != Draft && canReview(role)) {
+		return nil, ErrNotFound
 	}
 	return &storage.Object{ReadCloser: bufferedObject{Reader: bytes.NewReader(contents)}, Info: object.Info}, nil
 }

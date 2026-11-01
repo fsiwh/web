@@ -218,6 +218,13 @@ type HistoricalMeetingDocument struct {
 	BlobKey string `json:"blob_key"`
 }
 
+type LegacyReferenceRepair struct {
+	SourceTable string `json:"source_table"`
+	RecordID    int64  `json:"record_id"`
+	Original    string `json:"original"`
+	RecordedAt  string `json:"recorded_at"`
+}
+
 type MailOutbox struct {
 	ID        int64  `json:"id"`
 	UserID    int64  `json:"user_id"`

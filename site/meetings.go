@@ -33,7 +33,7 @@ func (c *Handler) EditPublication(w http.ResponseWriter, r *http.Request, a *vie
 			return
 		}
 		var ok bool
-		p, ok, err = c.meetings.GetWithError(internal)
+		p, ok, err = c.meetings.GetContext(r.Context(), internal)
 		if err != nil {
 			c.serverError(w, err)
 			return
@@ -89,7 +89,7 @@ func (c *Handler) EditPublication(w http.ResponseWriter, r *http.Request, a *vie
 				errors[key] = message
 			}
 		}
-		if err := c.meetings.Save(p); err != nil {
+		if err := c.meetings.SaveContext(r.Context(), p); err != nil {
 			a.Message = err.Error()
 			if id == "create" {
 				p.ID = "create"
@@ -139,7 +139,7 @@ func (c *Handler) ReviewPublication(w http.ResponseWriter, r *http.Request) {
 		c.serverError(w, err)
 		return
 	}
-	p, ok, err := c.meetings.GetWithError(internal)
+	p, ok, err := c.meetings.GetContext(r.Context(), internal)
 	if err != nil {
 		c.serverError(w, err)
 		return
@@ -151,7 +151,7 @@ func (c *Handler) ReviewPublication(w http.ResponseWriter, r *http.Request) {
 	a := &view.AdminPage{Section: "meetings", SectionTitle: "Sitzungen und Protokolle", View: "review", Publication: ptr(publicationView(p)), Action: r.URL.Path}
 	status := http.StatusOK
 	if r.Method == http.MethodPost {
-		if err := c.meetings.Publish(p.ID, owner); err != nil {
+		if err := c.meetings.PublishContext(r.Context(), p.ID, owner); err != nil {
 			a.Message = err.Error()
 			status = http.StatusUnprocessableEntity
 		} else {
@@ -182,7 +182,7 @@ func (c *Handler) publicationOwner(w http.ResponseWriter) string {
 }
 
 func (c *Handler) Meetings(w http.ResponseWriter, r *http.Request) {
-	all, err := c.meetings.AllWithError()
+	all, err := c.meetings.AllContext(r.Context())
 	if err != nil {
 		c.serverError(w, err)
 		return

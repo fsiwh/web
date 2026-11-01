@@ -45,6 +45,9 @@ func TestMeetingInitialSaveFailureCanRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'meeting-admin@example.org','Meeting administrator','hash','admin',1,1)`); err != nil {
+		t.Fatal(err)
+	}
 	storage := &meetingRetryBlob{}
 	storage.fail.Store(true)
 	store, err := meetings.NewStore(db, storage)
@@ -144,7 +147,10 @@ func TestMeetingDocuments(t *testing.T) {
 }
 
 func TestMeetingDraftUsesStableAccountOwner(t *testing.T) {
-	c, _ := testApplication(t)
+	c, db := testApplication(t)
+	if _, err := db.Exec("UPDATE users SET role='editor',verified=1 WHERE id=42"); err != nil {
+		t.Fatal(err)
+	}
 	p := meetings.Publication{ID: "draft", Owner: "42", Date: "2028-10-28", Number: 45, Kind: "Einladung", Filename: "einladung.pdf", Data: []byte("%PDF-1.4\nmeeting\n%%EOF")}
 	if err := c.meetings.Save(p); err != nil {
 		t.Fatal(err)
