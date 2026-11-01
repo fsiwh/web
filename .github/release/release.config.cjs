@@ -7,6 +7,7 @@ module.exports = {
       releaseRules: [
         { breaking: true, release: 'major' },
         { type: 'chore', scope: 'deps', release: 'patch' },
+        { type: 'refactor', scope: 'storage', release: 'patch' },
       ],
     }],
     ['@semantic-release/github', {

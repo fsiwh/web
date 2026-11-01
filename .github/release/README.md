@@ -11,8 +11,13 @@ the next version:
 | `feat` | Minor |
 | `fix`, `perf` | Patch |
 | `chore(deps)` | Patch |
+| `refactor(storage)` | Patch |
 | Breaking change (`!` or `BREAKING CHANGE:`) | Major |
 | Other types, including `ci` and `chore(ci)` | None |
+
+Use `fix(storage)` for storage security and correctness fixes. Use
+`refactor(storage)` for runtime storage implementation changes, such as replacing
+an SDK, that need a published image. Unscoped refactors do not trigger releases.
 
 Standard SemVer applies below 1.0 too: a feature after 0.1.18 produces 0.2.0,
 and a breaking change produces 1.0.0. No source version bump or release commit is
