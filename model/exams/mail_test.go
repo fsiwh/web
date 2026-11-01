@@ -54,14 +54,14 @@ func TestSubmissionMailOptInAndRetry(t *testing.T) {
 	if err := s.DeliverSubmissionMail(ctx, mailer); err == nil || mailer.calls != 1 {
 		t.Fatal("SMTP failure was not returned")
 	}
-	if _, err := db.Exec(`UPDATE users SET email='reviewer@fsi-wh.de' WHERE id=2`); err != nil {
+	if _, err := db.Exec(`UPDATE users SET email='reviewer@portal.example.invalid' WHERE id=2`); err != nil {
 		t.Fatal(err)
 	}
 	mailer.err = nil
 	if err := s.DeliverSubmissionMail(ctx, mailer); err != nil {
 		t.Fatal(err)
 	}
-	if mailer.calls != 2 || mailer.to != "reviewer@fsi-wh.de" || mailer.name != "Reviewer" || mailer.id != draft.SubmissionID {
+	if mailer.calls != 2 || mailer.to != "reviewer@portal.example.invalid" || mailer.name != "Reviewer" || mailer.id != draft.SubmissionID {
 		t.Fatalf("retry did not use the current recipient and stable public submission ID: %+v", mailer)
 	}
 	if err := s.DeliverSubmissionMail(ctx, mailer); err != nil || mailer.calls != 2 {

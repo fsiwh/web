@@ -64,7 +64,7 @@ func csrfFrom(t *testing.T, body string) string {
 	return match[1]
 }
 func (b *adminBrowser) login() {
-	b.loginAs("admin@fsv-wh.de")
+	b.loginAs("admin@council.example.invalid")
 }
 
 func TestAdminAuthenticationAndMutations(t *testing.T) {
@@ -81,10 +81,10 @@ func TestAdminAuthenticationAndMutations(t *testing.T) {
 	}
 	_, body, _ := b.get("/login")
 	token := csrfFrom(t, body)
-	if status, _, _ := b.post("/login", url.Values{"email": {"admin@fsv-wh.de"}, "password": {"wrong"}, "csrf": {token}}); status != 422 {
+	if status, _, _ := b.post("/login", url.Values{"email": {"admin@council.example.invalid"}, "password": {"wrong"}, "csrf": {token}}); status != 422 {
 		t.Fatal("wrong credentials accepted")
 	}
-	if status, _, _ := b.post("/login", url.Values{"email": {"admin@fsv-wh.de"}, "password": {"admin@fsv-wh.de"}}); status != 403 {
+	if status, _, _ := b.post("/login", url.Values{"email": {"admin@council.example.invalid"}, "password": {"admin@council.example.invalid"}}); status != 403 {
 		t.Fatal("login CSRF accepted")
 	}
 	b.login()
@@ -105,7 +105,7 @@ func TestAdminAuthenticationAndMutations(t *testing.T) {
 	if status, body, _ := b.post("/admin/users/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {""}, "public_email": {"not-email"}}); status != 422 || !strings.Contains(body, "govuk-error-summary") {
 		t.Fatal("invalid member accepted")
 	}
-	if status, _, _ := b.post("/admin/users/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {"Demo-Vorsitz"}, "public_email": {"demo@studmail.w-hs.de"}}); status != 303 {
+	if status, _, _ := b.post("/admin/users/"+member+"/edit", url.Values{"csrf": {b.csrf}, "name": {"Demo-Vorsitz"}, "public_email": {"demo@students.example.invalid"}}); status != 303 {
 		t.Fatal("member edit failed")
 	}
 	if _, body, _ := b.get("/team"); !strings.Contains(body, "Demo-Vorsitz") {
@@ -172,7 +172,7 @@ func TestPublicationReviewAndVisibility(t *testing.T) {
 	b := newAdminBrowser(t, server)
 	b.login()
 	other := newAdminBrowser(t, server)
-	other.loginAs("other@fsv-wh.de")
+	other.loginAs("other@council.example.invalid")
 	pdf, err := os.ReadFile("testdata/example.pdf")
 	if err != nil {
 		t.Fatal(err)
@@ -234,7 +234,7 @@ func TestPublicationReviewAndVisibility(t *testing.T) {
 }
 
 func TestPasswordResetConfirmationPreview(t *testing.T) {
-	handler, db := testApplication(t, []users.User{{ID: 42, Name: "Kim Beispiel", Email: "Kim@STUDMAIL.W-HS.DE", Role: "editor", Active: true}}...)
+	handler, db := testApplication(t, []users.User{{ID: 42, Name: "Kim Beispiel", Email: "Kim@STUDENTS.EXAMPLE.INVALID", Role: "editor", Active: true}}...)
 	account := "/admin/users/" + publicRef(t, db, "users", "42")
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -244,7 +244,7 @@ func TestPasswordResetConfirmationPreview(t *testing.T) {
 		t.Fatal("unprotected password reset")
 	}
 	b.login()
-	if status, body, _ := b.get(account); status != 200 || !strings.Contains(body, "kim@studmail.w-hs.de") || strings.Contains(body, "Kim@STUDMAIL") || !strings.Contains(body, `<dialog`) {
+	if status, body, _ := b.get(account); status != 200 || !strings.Contains(body, "kim@students.example.invalid") || strings.Contains(body, "Kim@STUDENTS") || !strings.Contains(body, `<dialog`) {
 		t.Fatal("user email normalization/dialog failed")
 	}
 	if status, body, _ := b.get(path); status != 200 || !strings.Contains(body, "Link zum Zurücksetzen senden") {
@@ -265,7 +265,7 @@ func TestPasswordResetConfirmationPreview(t *testing.T) {
 func TestUserPaginationKeepsSearchContext(t *testing.T) {
 	var records []users.User
 	for i := 1; i <= 45; i++ {
-		records = append(records, users.User{ID: int64(i), Name: fmt.Sprintf("Beispiel %02d", i), Email: fmt.Sprintf("user%d@studmail.w-hs.de", i), Verified: i%2 == 0, Active: true})
+		records = append(records, users.User{ID: int64(i), Name: fmt.Sprintf("Beispiel %02d", i), Email: fmt.Sprintf("user%d@students.example.invalid", i), Verified: i%2 == 0, Active: true})
 	}
 	handler, _ := testApplication(t, records...)
 	server := httptest.NewServer(handler)

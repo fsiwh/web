@@ -31,7 +31,7 @@ func mediaService(t *testing.T) (*Service, *sql.DB) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	_, err = db.Exec(`INSERT INTO users (id,email,name,password,private) VALUES (1,'media@fsv-wh.de','Private uploader','unused',1);
+	_, err = db.Exec(`INSERT INTO users (id,email,name,password,private) VALUES (1,'media@council.example.invalid','Private uploader','unused',1);
 INSERT INTO events (id,title,created_at,deleted_at) VALUES (10,'Sommerfest','2025-01-01T00:00:00Z',NULL),(20,'LAN','2026-01-01T00:00:00Z',NULL),(30,'Deleted','2027-01-01T00:00:00Z','2027-01-02T00:00:00Z'),(40,'Empty','2024-01-01T00:00:00Z',NULL);
 INSERT INTO media (id,event_id,user_id,title,description,access_key,mime_type,nbytes,created_at,deleted_at) VALUES
 (99,10,1,'Older','Older photograph','older','image/jpeg',5,'2025-01-01T00:00:00Z',NULL),

@@ -23,7 +23,7 @@ func TestConcurrentVerificationConsumersAreSingleUse(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback()
-	if err := s.queueToken(ctx, tx, 42, "old@studmail.w-hs.de", "Example", "verify"); err != nil {
+	if err := s.queueToken(ctx, tx, 42, "old@students.example.invalid", "Example", "verify"); err != nil {
 		t.Fatal(err)
 	}
 	if err := tx.Commit(); err != nil {
@@ -76,7 +76,7 @@ func TestConcurrentVerificationConsumersAreSingleUse(t *testing.T) {
 func TestAccountSQLInputsCannotSelectOrModifyAnotherUser(t *testing.T) {
 	s, db := testService(t)
 	preferenceUser(t, db)
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(43,'admin@fsv-wh.de','Administrator','hash','admin',1,1)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(43,'admin@council.example.invalid','Administrator','hash','admin',1,1)`); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()

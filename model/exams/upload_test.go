@@ -15,7 +15,7 @@ func submission(t *testing.T, db *sql.DB) SubmissionDraft {
 
 func TestMultiplePersistentUploadsAndAuthorizedRevision(t *testing.T) {
 	s, db := examsService(t)
-	if _, err := db.Exec(`UPDATE users SET active=1,verified=1,role='admin' WHERE id=1; INSERT INTO users(id,email,name,password,active,verified) VALUES (2,'other@fsv-wh.de','Other','unused',1,1);`); err != nil {
+	if _, err := db.Exec(`UPDATE users SET active=1,verified=1,role='admin' WHERE id=1; INSERT INTO users(id,email,name,password,active,verified) VALUES (2,'other@council.example.invalid','Other','unused',1,1);`); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()

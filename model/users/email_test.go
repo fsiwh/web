@@ -4,20 +4,20 @@ import "testing"
 
 func TestEmailEligibility(t *testing.T) {
 	for _, email := range []string{
-		"name@studmail.w-hs.de", "name@fsv-wh.de", "Name@STUDMAIL.W-HS.DE",
-		"first.last+tag@fsv-wh.de", `"name@elsewhere"@fsv-wh.de`,
+		"name@students.example.invalid", "name@council.example.invalid", "Name@STUDENTS.EXAMPLE.INVALID",
+		"first.last+tag@council.example.invalid", `"name@elsewhere"@council.example.invalid`,
 	} {
-		if err := validateEmail(email, []string{"studmail.w-hs.de", "fsv-wh.de"}); err != "" {
+		if err := validateEmail(email, []string{"students.example.invalid", "council.example.invalid"}); err != "" {
 			t.Errorf("%q rejected: %s", email, err)
 		}
 	}
 	for _, email := range []string{
-		"", "name", "name@gmail.com", "name@w-hs.de",
-		"name@sub.fsv-wh.de", "name@fsv-wh.de.example.org", "name@notfsv-wh.de",
-		"name@studmail.w-hs.de.example.org", "name@fsv-wh.de.",
-		"Name <name@fsv-wh.de>", "name@fsv-wh.de (Name)",
+		"", "name", "name@external.example.invalid", "name@university.example.invalid",
+		"name@sub.council.example.invalid", "name@council.example.invalid.example.org", "name@notcouncil.example.invalid",
+		"name@students.example.invalid.example.org", "name@council.example.invalid.",
+		"Name <name@council.example.invalid>", "name@council.example.invalid (Name)",
 	} {
-		if validateEmail(email, []string{"studmail.w-hs.de", "fsv-wh.de"}) == "" {
+		if validateEmail(email, []string{"students.example.invalid", "council.example.invalid"}) == "" {
 			t.Errorf("%q must be rejected", email)
 		}
 	}

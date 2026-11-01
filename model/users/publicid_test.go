@@ -11,7 +11,7 @@ import (
 func TestPublicProfileUsesPermanentOpaqueIDAndHonorsPrivacy(t *testing.T) {
 	s, db := testService(t)
 	ctx := context.Background()
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,private) VALUES(42,'profile@fsv-wh.de','Profile','!',0)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,private) VALUES(42,'profile@council.example.invalid','Profile','!',0)`); err != nil {
 		t.Fatal(err)
 	}
 	value, err := s.PublicID(ctx, 42)

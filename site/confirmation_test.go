@@ -15,16 +15,16 @@ func TestResendAccountConfirmationAndMemberInvitation(t *testing.T) {
 	b, db := identityBrowser(t)
 	ctx := context.Background()
 	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES
-		(42,'admin@fsv-wh.de','Admin','unchanged','admin',1,1),
-		(43,'student@studmail.w-hs.de','Student','unchanged','user',1,0),
-		(44,'member@studmail.w-hs.de','Member','unchanged','editor',1,0)`); err != nil {
+		(42,'admin@council.example.invalid','Admin','unchanged','admin',1,1),
+		(43,'student@students.example.invalid','Student','unchanged','user',1,0),
+		(44,'member@students.example.invalid','Member','unchanged','editor',1,0)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`UPDATE users SET invitation_pending=1 WHERE id=44`); err != nil {
 		t.Fatal(err)
 	}
 	seedPublicRefs(t, db)
-	identity := users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}})
+	identity := users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}})
 	session, err := identity.CreateSession(ctx, 42)
 	if err != nil {
 		t.Fatal(err)

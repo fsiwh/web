@@ -31,7 +31,7 @@ func TestEventPublicationWorkflow(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if _, err = db.Exec(`INSERT INTO users(id,email,name,password,active,verified,role) VALUES(1,'editor@fsv-wh.de','Editor','unused',1,1,'editor'),(2,'member@fsv-wh.de','Member','unused',1,1,'user')`); err != nil {
+	if _, err = db.Exec(`INSERT INTO users(id,email,name,password,active,verified,role) VALUES(1,'editor@council.example.invalid','Editor','unused',1,1,'editor'),(2,'member@council.example.invalid','Member','unused',1,1,'user')`); err != nil {
 		t.Fatal(err)
 	}
 	seedPublicRefs(t, db)
@@ -44,7 +44,7 @@ func TestEventPublicationWorkflow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	c := &Handler{views: views, identity: users.NewService(db, "http://example.test", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}), events: events.NewService(db, storage), posts: posts.NewService(db)}
+	c := &Handler{views: views, identity: users.NewService(db, "http://example.test", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}}), events: events.NewService(db, storage), posts: posts.NewService(db)}
 	mux := http.NewServeMux()
 	write := routePolicy{authenticated: true, csrf: true, bodyLimit: 8 << 20}
 	mux.Handle("/events/create", c.withSession(write, http.HandlerFunc(c.EditEvent)))

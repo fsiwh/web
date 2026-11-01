@@ -22,10 +22,10 @@ func TestForgotPassword(t *testing.T) {
 		{"empty", "POST", "", 422, "Gib deine E-Mail-Adresse ein."},
 		{"invalid", "POST", "not-an-email", 422, "Gib eine vollständige E-Mail-Adresse ein"},
 		{"other domain", "POST", "person@example.org", 422, "Verwende eine E-Mail-Adresse mit"},
-		{"lookalike", "POST", "person@fsv-wh.de.example.org", 422, "Verwende eine E-Mail-Adresse mit"},
-		{"student", "POST", "person@studmail.w-hs.de", 303, ""},
-		{"staff", "POST", "person@fsv-wh.de", 303, ""},
-		{"trim and case", "POST", "  Person@FSV-WH.DE  ", 303, ""},
+		{"lookalike", "POST", "person@council.example.invalid.example.org", 422, "Verwende eine E-Mail-Adresse mit"},
+		{"student", "POST", "person@students.example.invalid", 303, ""},
+		{"staff", "POST", "person@council.example.invalid", 303, ""},
+		{"trim and case", "POST", "  Person@COUNCIL.EXAMPLE.INVALID  ", 303, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			form := url.Values{"email": {tc.email}}

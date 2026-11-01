@@ -8,7 +8,7 @@ import (
 func TestFailedConfirmationResendPreservesPreviousLink(t *testing.T) {
 	s, db := testService(t)
 	ctx := context.Background()
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (42,'person@studmail.w-hs.de','Person','unchanged','user',1,0)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (42,'person@students.example.invalid','Person','unchanged','user',1,0)`); err != nil {
 		t.Fatal(err)
 	}
 	if queued, err := s.ResendConfirmation(ctx, 42); err != nil || !queued {

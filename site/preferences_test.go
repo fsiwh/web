@@ -18,7 +18,7 @@ func TestAccountPreferencesRoutesAndOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO users(id,name,email,password,role,active,verified) VALUES(9042,'My Name','me@studmail.w-hs.de',?,'user',1,1),(9043,'Other Name','other@studmail.w-hs.de',?,'admin',1,1)`, string(hash), string(hash)); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,name,email,password,role,active,verified) VALUES(9042,'My Name','me@students.example.invalid',?,'user',1,1),(9043,'Other Name','other@students.example.invalid',?,'admin',1,1)`, string(hash), string(hash)); err != nil {
 		t.Fatal(err)
 	}
 	s, err := c.identity.CreateSession(ctx, 9042)
@@ -70,7 +70,7 @@ func TestAccountPreferencesRoutesAndOwnership(t *testing.T) {
 		t.Fatal("form changed another account or role", mine, other, role, err)
 	}
 	for _, path := range []string{"/account/email", "/account/password"} {
-		w := request("POST", path, url.Values{"csrf": {s.CSRF}, "email": {"new@studmail.w-hs.de"}, "current-password": {"wrong-secret-value"}, "password": {"new-secret-value"}}, true)
+		w := request("POST", path, url.Values{"csrf": {s.CSRF}, "email": {"new@students.example.invalid"}, "current-password": {"wrong-secret-value"}, "password": {"new-secret-value"}}, true)
 		body := w.Body.String()
 		if w.Code != 422 || !strings.Contains(body, "govuk-error-summary") || !strings.Contains(body, `href="#current-password"`) || !strings.Contains(body, "Fehler:") {
 			t.Fatalf("invalid current password %s: %d %s", path, w.Code, body)
@@ -79,7 +79,7 @@ func TestAccountPreferencesRoutesAndOwnership(t *testing.T) {
 			t.Fatal("validation response reflected a password")
 		}
 	}
-	w := request("POST", "/account/email", url.Values{"csrf": {s.CSRF}, "email": {"new@studmail.w-hs.de"}, "current-password": {"current password"}}, true)
+	w := request("POST", "/account/email", url.Values{"csrf": {s.CSRF}, "email": {"new@students.example.invalid"}, "current-password": {"current password"}}, true)
 	if w.Code != 303 {
 		t.Fatalf("email request: %d %s", w.Code, w.Body.String())
 	}
@@ -95,11 +95,11 @@ func TestAccountPreferencesRoutesAndOwnership(t *testing.T) {
 		t.Fatal("confirmation GET failed", w.Code)
 	}
 	p, err := c.identity.Preferences(ctx, 9042)
-	if err != nil || p.Email != "me@studmail.w-hs.de" || p.PendingEmail != "new@studmail.w-hs.de" {
+	if err != nil || p.Email != "me@students.example.invalid" || p.PendingEmail != "new@students.example.invalid" {
 		t.Fatal("GET confirmation consumed link or wrong pending email", p, err)
 	}
 	w = request("GET", "/account", nil, true)
-	if !strings.Contains(w.Body.String(), "Bestätige deine neue E-Mail-Adresse") || !strings.Contains(w.Body.String(), "new@studmail.w-hs.de") {
+	if !strings.Contains(w.Body.String(), "Bestätige deine neue E-Mail-Adresse") || !strings.Contains(w.Body.String(), "new@students.example.invalid") {
 		t.Fatal("missing pending email instructions")
 	}
 	w = request("POST", "/email/confirm", url.Values{"csrf": {s.CSRF}, "token": {u.Query().Get("token")}}, true)
@@ -107,7 +107,7 @@ func TestAccountPreferencesRoutesAndOwnership(t *testing.T) {
 		t.Fatalf("email confirmation: %d %s", w.Code, w.Body.String())
 	}
 	p, err = c.identity.Preferences(ctx, 9042)
-	if err != nil || p.Email != "new@studmail.w-hs.de" || p.PendingEmail != "" {
+	if err != nil || p.Email != "new@students.example.invalid" || p.PendingEmail != "" {
 		t.Fatal("confirmation did not update address", p, err)
 	}
 	w = request("POST", "/account/password", url.Values{"csrf": {s.CSRF}, "current-password": {"current password"}, "password": {"replacement password"}}, true)

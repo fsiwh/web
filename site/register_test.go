@@ -20,17 +20,17 @@ func TestRegistrationPreview(t *testing.T) {
 		status                         int
 	}{
 		{"", "", "", "Bitte gib einen Namen an.", 422},
-		{"A", "name@studmail.w-hs.de", "private-test-password", "Der Name muss zwischen 2 und 64 Zeichen lang sein.", 422},
-		{"Name", "name@studmail.w-hs.de.evil.example", "private-test-password", "Verwende eine E-Mail-Adresse mit", 422},
-		{"Name", "name@sub.fsv-wh.de", "private-test-password", "Verwende eine E-Mail-Adresse mit", 422},
-		{"Name", "Name <name@fsv-wh.de>", "private-test-password", "Gib eine vollständige E-Mail-Adresse ein", 422},
-		{"Name", "name@studmail.w-hs.de", "short", "Das Passwort muss mindestens 8 Zeichen lang sein.", 422},
-		{"Name", "name@studmail.w-hs.de", strings.Repeat("x", 73), "", 303},
-		{"Name", "name@studmail.w-hs.de", "äöüßéèñ", "Das Passwort muss mindestens 8 Zeichen lang sein.", 422},
-		{"Name", "name@studmail.w-hs.de", "äöüßéèñø", "", 303},
-		{"Name", "name@studmail.w-hs.de", " a b c d", "", 303},
-		{"  Name  ", "  Name@STUDMAIL.W-HS.DE  ", "private-test-password", "", 303},
-		{"Name", "name@fsv-wh.de", "private-test-password", "Verwende eine E-Mail-Adresse mit @studmail.w-hs.de.", 422},
+		{"A", "name@students.example.invalid", "private-test-password", "Der Name muss zwischen 2 und 64 Zeichen lang sein.", 422},
+		{"Name", "name@students.example.invalid.evil.example", "private-test-password", "Verwende eine E-Mail-Adresse mit", 422},
+		{"Name", "name@sub.council.example.invalid", "private-test-password", "Verwende eine E-Mail-Adresse mit", 422},
+		{"Name", "Name <name@council.example.invalid>", "private-test-password", "Gib eine vollständige E-Mail-Adresse ein", 422},
+		{"Name", "name@students.example.invalid", "short", "Das Passwort muss mindestens 8 Zeichen lang sein.", 422},
+		{"Name", "name@students.example.invalid", strings.Repeat("x", 73), "", 303},
+		{"Name", "name@students.example.invalid", "äöüßéèñ", "Das Passwort muss mindestens 8 Zeichen lang sein.", 422},
+		{"Name", "name@students.example.invalid", "äöüßéèñø", "", 303},
+		{"Name", "name@students.example.invalid", " a b c d", "", 303},
+		{"  Name  ", "  Name@STUDENTS.EXAMPLE.INVALID  ", "private-test-password", "", 303},
+		{"Name", "name@council.example.invalid", "private-test-password", "Verwende eine E-Mail-Adresse mit @students.example.invalid.", 422},
 	} {
 		handler, db := testApplication(t)
 		seedPublicContent(t, db)
@@ -52,7 +52,7 @@ func TestRegistrationPreview(t *testing.T) {
 	}
 	for _, program := range []string{"", "unknown-program", "1"} {
 		handler, _ := testHandler(t)
-		form := url.Values{"name": {"Testperson"}, "email": {"test@studmail.w-hs.de"}, "password": {"private-test-password"}, "program_id": {program}}
+		form := url.Values{"name": {"Testperson"}, "email": {"test@students.example.invalid"}, "password": {"private-test-password"}, "program_id": {program}}
 		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		response := httptest.NewRecorder()
@@ -114,7 +114,7 @@ func TestRegistrationSeparatesStudyProgramAndDegree(t *testing.T) {
 		{program, "bachelor", "1900", "version", 0},
 		{"", "", "2023", "program_id", 0},
 	} {
-		email := fmt.Sprintf("qualification%d@studmail.w-hs.de", i)
+		email := fmt.Sprintf("qualification%d@students.example.invalid", i)
 		form := url.Values{"name": {"Testperson"}, "email": {email}, "password": {"private-test-password"}, "program_id": {tc.program}, "degree": {tc.degree}, "version": {tc.version}}
 		r := httptest.NewRequest("POST", "/register", strings.NewReader(form.Encode()))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")

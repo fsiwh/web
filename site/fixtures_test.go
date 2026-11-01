@@ -86,12 +86,12 @@ func testApplication(t *testing.T, records ...users.User) (*Handler, *sql.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (900,'admin@fsv-wh.de','Administrator',?,'admin',1,1),(901,'other@fsv-wh.de','Other administrator',?,'admin',1,1)`, string(hash), string(hash))
+	_, err = db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (900,'admin@council.example.invalid','Administrator',?,'admin',1,1),(901,'other@council.example.invalid','Other administrator',?,'admin',1,1)`, string(hash), string(hash))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(records) == 0 {
-		records = []users.User{{ID: 42, Name: "Kim Muster", Email: "kim@studmail.w-hs.de", Active: true}, {ID: 43, Name: "Alex Beispiel", Email: "alex@studmail.w-hs.de", Active: true}}
+		records = []users.User{{ID: 42, Name: "Kim Muster", Email: "kim@students.example.invalid", Active: true}, {ID: 43, Name: "Alex Beispiel", Email: "alex@students.example.invalid", Active: true}}
 	}
 	for _, user := range records {
 		if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(?,?,?,?,'user',1,?)`, user.ID, strings.ToLower(strings.TrimSpace(user.Email)), user.Name, string(hash), user.Verified); err != nil {

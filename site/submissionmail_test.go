@@ -12,11 +12,11 @@ import (
 
 func TestSubmissionMailSettingsAuthorizationAndPersistence(t *testing.T) {
 	b, db := identityBrowser(t)
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(1,'reviewer@fsi-wh.de','Reviewer','unused','user',1,1)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(1,'reviewer@portal.example.invalid','Reviewer','unused','user',1,1)`); err != nil {
 		t.Fatal(err)
 	}
 	seedExamPublicIDs(t, db)
-	session, err := users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"fsi-wh.de"}}).CreateSession(context.Background(), 1)
+	session, err := users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"portal.example.invalid"}}).CreateSession(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +31,7 @@ func TestSubmissionMailSettingsAuthorizationAndPersistence(t *testing.T) {
 	if _, err := db.Exec(`UPDATE users SET role='editor' WHERE id=1`); err != nil {
 		t.Fatal(err)
 	}
-	session, err = users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"fsi-wh.de"}}).CreateSession(context.Background(), 1)
+	session, err = users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"portal.example.invalid"}}).CreateSession(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}

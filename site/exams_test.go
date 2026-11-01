@@ -84,7 +84,7 @@ func TestExamsDownloadRequiresLiveAuthenticatedSession(t *testing.T) {
 INSERT INTO programs (id,name) VALUES (1,'Informatik (B. Sc.)');
 INSERT INTO program_versions (program_id,name) VALUES (1,'2023');
 INSERT INTO modules (id,program_id,name) VALUES (10,1,'Datenbanken');
-INSERT INTO users (id,email,name,password,active,verified) VALUES (1,'reader@fsv-wh.de','Person','unused',1,1);
+INSERT INTO users (id,email,name,password,active,verified) VALUES (1,'reader@council.example.invalid','Person','unused',1,1);
 INSERT INTO archive (id,group_id,user_id,module_id,version,exam_date,access_key,mime_type,nbytes,checksum) VALUES (100,100,1,10,'2023','2026-01-01','key','application/pdf',9,'checksum');`)
 	if err != nil {
 		t.Fatal(err)
@@ -103,7 +103,7 @@ INSERT INTO archive (id,group_id,user_id,module_id,version,exam_date,access_key,
 			t.Fatal("anonymous PDF download allowed or cacheable")
 		}
 	}
-	session, err := users.NewService(db, "http://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}).CreateSession(context.Background(), 1)
+	session, err := users.NewService(db, "http://example.org", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}}).CreateSession(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ INSERT INTO modules(id,program_id,name) VALUES (10,1,'Datenbanken');
 INSERT INTO programs(id,name) VALUES (2,'Medieninformatik (B. Sc.)');
 INSERT INTO program_versions(program_id,name) VALUES (2,'2025');
 INSERT INTO modules(id,program_id,name) VALUES (20,2,'Fremdes Modul');
-INSERT INTO users(id,email,name,password,active,verified) VALUES (1,'author@fsv-wh.de','Person','unused',1,1);`); err != nil {
+INSERT INTO users(id,email,name,password,active,verified) VALUES (1,'author@council.example.invalid','Person','unused',1,1);`); err != nil {
 		t.Fatal(err)
 	}
 	seedExamPublicIDs(t, db)
@@ -170,7 +170,7 @@ INSERT INTO users(id,email,name,password,active,verified) VALUES (1,'author@fsv-
 	if status, _, _ := b.get("/exams/submissions/create"); status != 303 {
 		t.Fatal("anonymous upload form allowed")
 	}
-	session, err := users.NewService(db, "http://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}).CreateSession(context.Background(), 1)
+	session, err := users.NewService(db, "http://example.org", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}}).CreateSession(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +289,7 @@ INSERT INTO users(id,email,name,password,active,verified) VALUES (1,'author@fsv-
 	if _, err := db.Exec(`UPDATE users SET role='editor' WHERE id=1`); err != nil {
 		t.Fatal(err)
 	}
-	session, err = users.NewService(db, "http://example.org", users.DomainPolicy{Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}).CreateSession(context.Background(), 1)
+	session, err = users.NewService(db, "http://example.org", users.DomainPolicy{Accounts: []string{"students.example.invalid", "council.example.invalid"}}).CreateSession(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}

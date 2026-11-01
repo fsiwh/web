@@ -51,7 +51,7 @@ func TestAccountAuditSanitizesUntrustedEmailDomain(t *testing.T) {
 
 func TestSessionExpiryAuditDoesNotExposeSessionCookie(t *testing.T) {
 	s, db := testService(t)
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'person@studmail.w-hs.de','Person','unused','user',1,1)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'person@students.example.invalid','Person','unused','user',1,1)`); err != nil {
 		t.Fatal(err)
 	}
 	var logs bytes.Buffer
@@ -82,7 +82,7 @@ func TestRegistrationRollbackDoesNotEmitSuccessAudit(t *testing.T) {
 	}
 	var logs bytes.Buffer
 	ctx := audit.WithLogger(context.Background(), slog.New(slog.NewJSONHandler(&logs, nil)))
-	if err := s.Register(ctx, "Student", "person@studmail.w-hs.de", "test password", "", "", ""); err == nil {
+	if err := s.Register(ctx, "Student", "person@students.example.invalid", "test password", "", "", ""); err == nil {
 		t.Fatal("registration unexpectedly committed")
 	}
 	if strings.Contains(logs.String(), "verification_queued") {
@@ -96,7 +96,7 @@ func TestRegistrationRollbackDoesNotEmitSuccessAudit(t *testing.T) {
 
 func TestBackgroundSessionExpiryAuditPreservesAccountAttribution(t *testing.T) {
 	s, db := testService(t)
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'person@studmail.w-hs.de','Person','unused','user',1,1)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'person@students.example.invalid','Person','unused','user',1,1)`); err != nil {
 		t.Fatal(err)
 	}
 	for _, userID := range []int64{0, 42} {
@@ -128,10 +128,10 @@ func TestRejectedTransactionalAccountActionsRemainAuditable(t *testing.T) {
 	ctx = audit.WithRecorder(ctx, audit.NewStore(db))
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if err := s.Register(ctx, "Student", "student@studmail.w-hs.de", "test password", "", "", ""); err != nil {
+	if err := s.Register(ctx, "Student", "student@students.example.invalid", "test password", "", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Register(ctx, "Student", "student@studmail.w-hs.de", "test password", "", "", ""); err != ErrEmailExists {
+	if err := s.Register(ctx, "Student", "student@students.example.invalid", "test password", "", "", ""); err != ErrEmailExists {
 		t.Fatal("duplicate registration was not rejected", err)
 	}
 	token := queuedToken(t, db, "verify")

@@ -25,13 +25,13 @@ func TestPersistentPosts(t *testing.T) {
 	}
 	defer db.Close()
 	_, err = db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified,private) VALUES
-	(1,'author@fsv-wh.de','Autor','unused','user',1,1,0),
-	(2,'other@fsv-wh.de','Andere','unused','user',1,1,0),
-	(3,'editor@fsv-wh.de','Redaktion','unused','editor',1,1,0),
-	(4,'admin@fsv-wh.de','Admin','unused','admin',1,1,0),
-	(5,'inactive@fsv-wh.de','Inaktiv','unused','user',0,1,0),
-	(6,'unverified@fsv-wh.de','Unbestätigt','unused','user',1,0,0),
-	(7,'private@fsv-wh.de','Vertraulich','unused','user',1,1,1);
+	(1,'author@council.example.invalid','Autor','unused','user',1,1,0),
+	(2,'other@council.example.invalid','Andere','unused','user',1,1,0),
+	(3,'editor@council.example.invalid','Redaktion','unused','editor',1,1,0),
+	(4,'admin@council.example.invalid','Admin','unused','admin',1,1,0),
+	(5,'inactive@council.example.invalid','Inaktiv','unused','user',0,1,0),
+	(6,'unverified@council.example.invalid','Unbestätigt','unused','user',1,0,0),
+	(7,'private@council.example.invalid','Vertraulich','unused','user',1,1,1);
 	INSERT INTO discussion_posts(id,title,body,user_id,type) VALUES(203823111852785665,'Alter Beitrag','Bestehender Text.',1,'discussion')`)
 	if err != nil {
 		t.Fatal(err)

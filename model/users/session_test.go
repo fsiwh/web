@@ -13,7 +13,7 @@ func TestSessionTimeoutsAndRememberedPrivileges(t *testing.T) {
 	ctx := context.Background()
 	for _, role := range []string{"user", "editor", "admin"} {
 		t.Run(role, func(t *testing.T) {
-			if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'test@fsv-wh.de','Test','unused',?,1,1)`, role); err != nil {
+			if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'test@council.example.invalid','Test','unused',?,1,1)`, role); err != nil {
 				t.Fatal(err)
 			}
 			defer db.Exec("DELETE FROM users WHERE id=42")

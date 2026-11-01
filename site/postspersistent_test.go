@@ -25,7 +25,7 @@ func TestPersistentPostsRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	_, err = db.Exec(`INSERT INTO users(id,email,name,password,active,verified) VALUES(1,'author@fsv-wh.de','Echter Autor','unused',1,1),(2,'other@fsv-wh.de','Andere Person','unused',1,1)`)
+	_, err = db.Exec(`INSERT INTO users(id,email,name,password,active,verified) VALUES(1,'author@council.example.invalid','Echter Autor','unused',1,1),(2,'other@council.example.invalid','Andere Person','unused',1,1)`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestPersistentPostsRequests(t *testing.T) {
 		t.Fatalf("%+v %v", list, err)
 	}
 	t.Run("public author profiles protect private identities", func(t *testing.T) {
-		profileHandler := &Handler{views: c.views, posts: c.posts, identity: users.NewService(db, "http://example.test", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}})}
+		profileHandler := &Handler{views: c.views, posts: c.posts, identity: users.NewService(db, "http://example.test", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}})}
 		if _, err := db.Exec(`UPDATE users SET private=0 WHERE id=1; UPDATE users SET private=1 WHERE id=2;
 		INSERT INTO discussion_posts(id,title,body,user_id,type,deleted_at) VALUES(999001,'Nicht veröffentlichter Beitrag','Hidden body',1,'discussion','2026-01-01T00:00:00Z');`); err != nil {
 			t.Fatal(err)
@@ -109,7 +109,7 @@ func TestPersistentPostsRequests(t *testing.T) {
 			if w.Code != tc.code {
 				t.Fatalf("profile %s: %d", tc.id, w.Code)
 			}
-			if strings.Contains(w.Body.String(), "@fsv-wh.de") || strings.Contains(w.Body.String(), "Nicht veröffentlichter Beitrag") {
+			if strings.Contains(w.Body.String(), "@council.example.invalid") || strings.Contains(w.Body.String(), "Nicht veröffentlichter Beitrag") {
 				t.Fatal("profile leaked non-public data")
 			}
 			if tc.code == 200 && (!strings.Contains(w.Body.String(), "Echter Autor") || !strings.Contains(w.Body.String(), "Ein echter Beitrag")) {
@@ -183,7 +183,7 @@ func TestPersistentPostsRequests(t *testing.T) {
 		}
 	})
 	t.Run("voting authentication csrf and local return", func(t *testing.T) {
-		c.identity = users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}})
+		c.identity = users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}})
 		session, err := c.identity.CreateSession(context.Background(), 1)
 		if err != nil {
 			t.Fatal(err)

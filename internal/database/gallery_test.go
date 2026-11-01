@@ -28,7 +28,7 @@ func TestGalleryDefaultMigrationPreservesSelections(t *testing.T) {
 	if _, err := p.UpTo(ctx, 22); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password) VALUES(1,'gallery@fsi-wh.de','Gallery','unused');
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password) VALUES(1,'gallery@portal.example.invalid','Gallery','unused');
 INSERT INTO events(id,title) VALUES(10,'Gallery');
 INSERT INTO media(id,event_id,user_id,access_key,mime_type,nbytes,gallery_visible) VALUES
 (101,10,1,'media/first/source','image/jpeg',5,1),(102,10,1,'media/second/source','image/jpeg',5,0)`); err != nil {

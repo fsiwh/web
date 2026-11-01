@@ -23,7 +23,7 @@ INSERT INTO media(id,event_id,user_id,title,access_key,mime_type,nbytes,created_
 		t.Fatal(err)
 	}
 	seedPublicRefs(t, db)
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(902,'gallery-user@fsi-wh.de','Member','unused','user',1,1)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(902,'gallery-user@portal.example.invalid','Member','unused','user',1,1)`); err != nil {
 		t.Fatal(err)
 	}
 	staff, err := c.identity.CreateSession(context.Background(), 900)

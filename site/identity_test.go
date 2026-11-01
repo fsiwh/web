@@ -107,7 +107,7 @@ func persistentServices(t *testing.T, db *sql.DB, storage exams.Storage) Service
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Services{Audit: audit.NewStore(db), Organization: org, Users: users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}), Exams: exams.NewService(db, storage), Members: team, Meetings: meetingStore, Posts: posts.NewService(db), Media: media.NewService(db, provider), Events: events.NewService(db, provider)}
+	return Services{Audit: audit.NewStore(db), Organization: org, Users: users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}}), Exams: exams.NewService(db, storage), Members: team, Meetings: meetingStore, Posts: posts.NewService(db), Media: media.NewService(db, provider), Events: events.NewService(db, provider)}
 }
 
 func historicalTestPDF(file string) []byte { return []byte("%PDF-1.4\n" + file + "\n%%EOF") }
@@ -118,7 +118,7 @@ func TestPersistentLoginAuthorizationAndLogout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'person@fsv-wh.de','Person',?,'user',1,1)`, string(hash)); err != nil {
+	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'person@council.example.invalid','Person',?,'user',1,1)`, string(hash)); err != nil {
 		t.Fatal(err)
 	}
 	seedPublicRefs(t, db)
@@ -127,13 +127,13 @@ func TestPersistentLoginAuthorizationAndLogout(t *testing.T) {
 		t.Fatal("persistent login advertises demo credentials")
 	}
 	csrf := csrfFrom(t, body)
-	if status, _, _ := b.post("/login", url.Values{"email": {"person@fsv-wh.de"}, "password": {"existing password"}}); status != 403 {
+	if status, _, _ := b.post("/login", url.Values{"email": {"person@council.example.invalid"}, "password": {"existing password"}}); status != 403 {
 		t.Fatal("login accepted missing CSRF")
 	}
 	if status, _, _ := b.post("/login", url.Values{"email": {"admin"}, "password": {"admin"}, "csrf": {csrf}}); status != 422 {
 		t.Fatal("demo credentials accepted")
 	}
-	status, _, headers := b.post("/login", url.Values{"email": {"person@fsv-wh.de"}, "password": {"existing password"}, "csrf": {csrf}})
+	status, _, headers := b.post("/login", url.Values{"email": {"person@council.example.invalid"}, "password": {"existing password"}, "csrf": {csrf}})
 	if status != 303 || headers.Get("Location") != "/" {
 		t.Fatalf("login: %d %v", status, headers)
 	}
@@ -155,10 +155,10 @@ func TestPersistentLoginAuthorizationAndLogout(t *testing.T) {
 		t.Fatal("promotion did not require a fresh login")
 	}
 	_, body, _ = b.get("/login")
-	if status, _, _ := b.post("/login", url.Values{"email": {"person@fsv-wh.de"}, "password": {"existing password"}, "csrf": {csrfFrom(t, body)}}); status != 303 {
+	if status, _, _ := b.post("/login", url.Values{"email": {"person@council.example.invalid"}, "password": {"existing password"}, "csrf": {csrfFrom(t, body)}}); status != 303 {
 		t.Fatal("login after promotion failed")
 	}
-	if status, body, _ := b.get("/admin/users"); status != 200 || !strings.Contains(body, "person@fsv-wh.de") {
+	if status, body, _ := b.get("/admin/users"); status != 200 || !strings.Contains(body, "person@council.example.invalid") {
 		t.Fatal("live directory or updated role not used")
 	}
 	_, body, _ = b.get("/admin")
@@ -199,7 +199,7 @@ func TestPersistentRegistrationAndRecoveryJourney(t *testing.T) {
 	b, db := identityBrowser(t)
 	_, body, _ := b.get("/register")
 	csrf := csrfFrom(t, body)
-	form := url.Values{"name": {"Kim Beispiel"}, "email": {"KIM@studmail.w-hs.de"}, "password": {"eight 🔐🔐🔐"}, "csrf": {csrf}}
+	form := url.Values{"name": {"Kim Beispiel"}, "email": {"KIM@students.example.invalid"}, "password": {"eight 🔐🔐🔐"}, "csrf": {csrf}}
 	if status, _, _ := b.post("/register", url.Values{}); status != 403 {
 		t.Fatal("registration accepted missing CSRF")
 	}
@@ -212,7 +212,7 @@ func TestPersistentRegistrationAndRecoveryJourney(t *testing.T) {
 	verifyPath := mailTokenPath(t, db, "verify")
 	_, body, _ = b.get(verifyPath)
 	var verified int
-	if err := db.QueryRow(`SELECT verified FROM users WHERE email='kim@studmail.w-hs.de'`).Scan(&verified); err != nil || verified != 0 {
+	if err := db.QueryRow(`SELECT verified FROM users WHERE email='kim@students.example.invalid'`).Scan(&verified); err != nil || verified != 0 {
 		t.Fatal("GET consumed verification token")
 	}
 	u, _ := url.Parse(verifyPath)
@@ -220,7 +220,7 @@ func TestPersistentRegistrationAndRecoveryJourney(t *testing.T) {
 		t.Fatal("verification failed")
 	}
 	_, body, _ = b.get("/password/forgot")
-	if status, _, h := b.post("/password/forgot", url.Values{"csrf": {csrfFrom(t, body)}, "email": {"kim@studmail.w-hs.de"}}); status != 303 || h.Get("Location") != "/password/forgot" {
+	if status, _, h := b.post("/password/forgot", url.Values{"csrf": {csrfFrom(t, body)}, "email": {"kim@students.example.invalid"}}); status != 303 || h.Get("Location") != "/password/forgot" {
 		t.Fatal("reset request failed")
 	}
 	if status, body, _ := b.get("/password/forgot"); status != 200 || !strings.Contains(body, "Wenn ein Konto") {
@@ -236,8 +236,8 @@ func TestPersistentRegistrationAndRecoveryJourney(t *testing.T) {
 	if status, _, _ := b.post("/password/reset", reset); status != 422 {
 		t.Fatal("reset token reused")
 	}
-	s := users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}})
-	if _, err := s.Login(context.Background(), "kim@studmail.w-hs.de", "replacement 🔐"); err != nil {
+	s := users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}})
+	if _, err := s.Login(context.Background(), "kim@students.example.invalid", "replacement 🔐"); err != nil {
 		t.Fatal(err)
 	}
 }

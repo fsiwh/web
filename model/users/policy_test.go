@@ -9,7 +9,7 @@ func TestConfiguredDomainPoliciesRemainSeparate(t *testing.T) {
 			t.Fatal(msg)
 		}
 	}
-	for _, email := range []string{"person@students.example.org.evil.org", "person@sub.students.example.org", "person@studmail.w-hs.de"} {
+	for _, email := range []string{"person@students.example.org.attacker.example.invalid", "person@sub.students.example.org", "person@students.example.invalid"} {
 		if s.EmailError(email) == "" {
 			t.Fatalf("unexpected domain accepted: %s", email)
 		}

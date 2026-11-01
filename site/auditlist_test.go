@@ -118,7 +118,7 @@ func TestAuditFiltersKeepContextAndCompactPresentation(t *testing.T) {
 	if !strings.Contains(body, "1 Aktivität") || !htmlContains(body, `class="govuk-tag govuk-tag--red">Falsches Passwort`) {
 		t.Fatal("failure filter or tag missing")
 	}
-	for search, total := range map[string]int{"kim@studmail.w-hs.de": 25, "Administrator": 0, "no-match": 0, "%27%20OR%201=1--": 0} {
+	for search, total := range map[string]int{"kim@students.example.invalid": 25, "Administrator": 0, "no-match": 0, "%27%20OR%201=1--": 0} {
 		status, body, _ = b.get("/admin/audit?search=" + search)
 		if status != 200 || !strings.Contains(body, fmt.Sprintf("%d Aktivitäten", total)) {
 			t.Fatalf("unexpected search result for %q", search)
