@@ -494,6 +494,8 @@ func submissionEditToken(ctx context.Context, db database.DBTX, submissionID str
 // EditSubmission updates a reviewed submission without transferring ownership,
 // replacing its stable download IDs or changing its moderation state.
 func (s *Service) EditSubmission(ctx context.Context, userID int64, submission SubmissionDraft, expected string) (result UploadResult, err error) {
+	ctx, cancel := context.WithTimeout(ctx, storageOperationTimeout)
+	defer cancel()
 	role, err := accountRole(ctx, s.db, userID)
 	if err != nil {
 		return result, err
@@ -572,6 +574,11 @@ func (s *Service) EditSubmission(ctx context.Context, userID int64, submission S
 	if len(ids) != 1 {
 		return result, ErrConflict
 	}
+	// This first transaction only validates the edit. Do not retain its pool
+	// slot or writer lock while verifying/uploading the replacement PDF.
+	if err := tx.Rollback(); err != nil {
+		return result, err
+	}
 	storage, ok := s.storage.(writableStorage)
 	if !ok {
 		return result, ErrStorage
@@ -582,7 +589,9 @@ func (s *Service) EditSubmission(ctx context.Context, userID int64, submission S
 		if committed {
 			return
 		}
-		tx.Rollback()
+		if tx != nil {
+			tx.Rollback()
+		}
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
 		for _, key := range attempts {
@@ -593,13 +602,46 @@ func (s *Service) EditSubmission(ctx context.Context, userID int64, submission S
 			}
 		}
 	}()
+	var object stagedObject
+	if len(submission.Documents) > 0 {
+		object, err = stageObject(ctx, s.db, storage, submission.Documents[0], &attempts)
+		if err != nil {
+			return result, err
+		}
+	}
+	tx, err = s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return result, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, "UPDATE archive_requests SET id=id WHERE id=?", submission.SubmissionID); err != nil {
+		return result, err
+	}
+	role, err = accountRole(ctx, tx, userID)
+	if err != nil {
+		return result, err
+	}
+	if !canReview(role) {
+		return result, ErrForbidden
+	}
+	current, err = submissionEditToken(ctx, tx, submission.SubmissionID)
+	if err != nil {
+		return result, err
+	}
+	if current != expected {
+		return result, ErrConflict
+	}
+	metadata, err = prepare(ctx, tx, userID, submission)
+	if err != nil {
+		return result, err
+	}
 	var comment *string
 	if value := strings.TrimSpace(submission.Comment); value != "" {
 		comment = &value
 	}
 	if len(submission.Documents) > 0 {
 		value := submission.Documents[0]
-		checksum, err := storeObject(ctx, tx, storage, value, &attempts)
+		checksum, err := object.attach(ctx, tx)
 		if err != nil {
 			return result, err
 		}

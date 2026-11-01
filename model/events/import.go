@@ -31,6 +31,8 @@ var instagramPath = regexp.MustCompile(`^/p/[A-Za-z0-9_-]+/$`)
 // Import preserves captions and full-sized photographs. The source URL makes
 // repeating an import idempotent without overwriting later editorial changes.
 func (s *Service) Import(ctx context.Context, user int64, input ImportedEvent) (event string, created bool, err error) {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", false, err
@@ -84,12 +86,17 @@ func (s *Service) Import(ctx context.Context, user int64, input ImportedEvent) (
 	if s.storage == nil {
 		return "", false, ErrCoverStorage
 	}
+	if err := tx.Rollback(); err != nil {
+		return "", false, err
+	}
 	keys := []string{}
 	committed := false
 	defer func() {
 		if !committed {
+			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
 			for _, key := range keys {
-				_ = s.storage.Delete(context.WithoutCancel(ctx), key)
+				_ = s.storage.Delete(cleanup, key)
 			}
 		}
 	}()
@@ -117,6 +124,81 @@ func (s *Service) Import(ctx context.Context, user int64, input ImportedEvent) (
 	album := input.AlbumID
 	newAlbum := album == ""
 	albumKey := publicid.New()
+	type stagedPhoto struct {
+		key, mime, alt, timestamp string
+		size                      int
+	}
+	photos := make([]stagedPhoto, 0, len(input.Images))
+	// All CPU-heavy image processing and storage I/O precede the write
+	// transaction. Random keys are private to this attempt until commit.
+	for position, image := range input.Images {
+		if strings.TrimSpace(image.Alt) == "" || utf8.RuneCountInString(image.Alt) > 500 {
+			return "", false, fmt.Errorf("image description required (up to 500 characters)")
+		}
+		photo, _, _, err := prepareImage(image.Data, 12000)
+		if err != nil {
+			return "", false, err
+		}
+		photoKey := publicid.New()
+		mime := http.DetectContentType(image.Data)
+		key := storage.MediaSourceKey(photoKey)
+		if err := upload(key, image.Data, mime); err != nil {
+			return "", false, err
+		}
+		previews, err := storage.GeneratePreviews(bytes.NewReader(photo))
+		if err != nil {
+			return "", false, err
+		}
+		for size, data := range previews {
+			if err := upload(storage.MediaPreviewKey(photoKey, size), data, "image/jpeg"); err != nil {
+				return "", false, err
+			}
+		}
+		if position == 0 && newAlbum {
+			if err := upload(storage.AlbumCoverSourceKey(albumKey), image.Data, mime); err != nil {
+				return "", false, err
+			}
+			for size, data := range previews {
+				if err := upload(storage.AlbumCoverPreviewKey(albumKey, size), data, "image/jpeg"); err != nil {
+					return "", false, err
+				}
+			}
+		}
+		photos = append(photos, stagedPhoto{key: key, mime: mime, alt: image.Alt, timestamp: datetime.FormatUTC(input.PublishedAt.Add(-time.Duration(position) * time.Second)), size: len(image.Data)})
+	}
+	tx, err = s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", false, err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, "UPDATE calendar_events SET id=id WHERE id=?", event); err != nil {
+		return "", false, err
+	}
+	if err := permission(ctx, tx, user); err != nil {
+		return "", false, err
+	}
+	var duplicate string
+	err = tx.QueryRowContext(ctx, "SELECT CAST(id AS TEXT) FROM calendar_events WHERE source_url=?", input.SourceURL).Scan(&duplicate)
+	if err == nil {
+		ref, err := publicid.Lookup(ctx, tx, "events", duplicate)
+		return ref, false, err
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return "", false, err
+	}
+	if event != "" {
+		var currentKey, source string
+		err := tx.QueryRowContext(ctx, "SELECT cover_key,source_url FROM calendar_events WHERE id=? AND deleted_at IS NULL", event).Scan(&currentKey, &source)
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", false, ErrNotFound
+		}
+		if err != nil {
+			return "", false, err
+		}
+		if source != "" || currentKey != oldKey {
+			return "", false, errors.New("Der Termin wurde inzwischen geändert. Lade ihn erneut.")
+		}
+	}
 	if newAlbum {
 		internal, allocateErr := publicid.NextInteger(ctx, tx, "albums")
 		if allocateErr != nil {
@@ -147,49 +229,13 @@ func (s *Service) Import(ctx context.Context, user int64, input ImportedEvent) (
 		return "", false, err
 	}
 	var firstPhoto string
-	for position, image := range input.Images {
-		if strings.TrimSpace(image.Alt) == "" || utf8.RuneCountInString(image.Alt) > 500 {
-			return "", false, fmt.Errorf("image description required (up to 500 characters)")
-		}
-		photo, _, _, err := prepareImage(image.Data, 12000)
-		if err != nil {
-			return "", false, err
-		}
-		photoKey := publicid.New()
-		mime := http.DetectContentType(image.Data)
-		key := storage.MediaSourceKey(photoKey)
-		if err := upload(key, image.Data, mime); err != nil {
-			return "", false, err
-		}
-		previews, err := storage.GeneratePreviews(bytes.NewReader(photo))
-		if err != nil {
-			return "", false, err
-		}
-		for size, data := range previews {
-			if err := upload(storage.MediaPreviewKey(photoKey, size), data, "image/jpeg"); err != nil {
-				return "", false, err
-			}
-		}
-		if position == 0 {
-			if newAlbum {
-				if err := upload(storage.AlbumCoverSourceKey(albumKey), image.Data, mime); err != nil {
-					return "", false, err
-				}
-				for size, data := range previews {
-					if err := upload(storage.AlbumCoverPreviewKey(albumKey, size), data, "image/jpeg"); err != nil {
-						return "", false, err
-					}
-				}
-			}
-		}
-		// Descending timestamps retain carousel order in the newest-first media listing.
-		photoTime := datetime.FormatUTC(input.PublishedAt.Add(-time.Duration(position) * time.Second))
+	for position, photo := range photos {
 		var photoID string
 		internal, allocateErr := publicid.NextInteger(ctx, tx, "media")
 		if allocateErr != nil {
 			return "", false, allocateErr
 		}
-		if err := tx.QueryRowContext(ctx, `INSERT INTO media(id,event_id,user_id,title,description,access_key,mime_type,nbytes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id`, internal, album, user, fmt.Sprintf("%s – Foto %d", input.Draft.Title, position+1), image.Alt, key, mime, len(image.Data), photoTime, photoTime).Scan(&photoID); err != nil {
+		if err := tx.QueryRowContext(ctx, `INSERT INTO media(id,event_id,user_id,title,description,access_key,mime_type,nbytes,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id`, internal, album, user, fmt.Sprintf("%s – Foto %d", input.Draft.Title, position+1), photo.alt, photo.key, photo.mime, photo.size, photo.timestamp, photo.timestamp).Scan(&photoID); err != nil {
 			return "", false, err
 		}
 		if _, err := publicid.Ensure(ctx, tx, "media", photoID); err != nil {
@@ -214,7 +260,9 @@ func (s *Service) Import(ctx context.Context, user int64, input ImportedEvent) (
 	}
 	committed = true
 	if validCoverKey(oldKey) && oldKey != coverKey {
-		_ = s.storage.Delete(context.WithoutCancel(ctx), oldKey)
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		_ = s.storage.Delete(cleanup, oldKey)
 	}
 	return ref, true, nil
 }

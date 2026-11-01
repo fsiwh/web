@@ -135,6 +135,8 @@ func (e Event) SortDate() string {
 }
 
 func (s *Service) Save(ctx context.Context, user int64, event string, d Draft, rich string, cover *CoverUpload) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return "", err
@@ -166,12 +168,17 @@ func (s *Service) Save(ctx context.Context, user int64, event string, d Draft, r
 	if fields := d.Validate(); len(fields) > 0 {
 		return "", &ValidationError{Fields: fields}
 	}
+	if err := tx.Rollback(); err != nil {
+		return "", err
+	}
 	coverKey := oldKey
 	newKey := ""
 	committed := false
 	defer func() {
 		if !committed && newKey != "" {
-			_ = s.storage.Delete(context.WithoutCancel(ctx), newKey)
+			cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			defer cancel()
+			_ = s.storage.Delete(cleanup, newKey)
 		}
 	}()
 	if cover != nil {
@@ -209,6 +216,30 @@ func (s *Service) Save(ctx context.Context, user int64, event string, d Draft, r
 	if err != nil {
 		return "", err
 	}
+	// Stage the cover before taking a writer lock, then revalidate both account
+	// access and the previous cover key. Retired keys must never be resurrected.
+	tx, err = s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, "UPDATE calendar_events SET id=id WHERE id=?", event); err != nil {
+		return "", err
+	}
+	if err := permission(ctx, tx, user); err != nil {
+		return "", err
+	}
+	if event != "" {
+		var currentKey string
+		if err := tx.QueryRowContext(ctx, "SELECT cover_key FROM calendar_events WHERE id=? AND deleted_at IS NULL", event).Scan(&currentKey); errors.Is(err, sql.ErrNoRows) {
+			return "", ErrNotFound
+		} else if err != nil {
+			return "", err
+		}
+		if currentKey != oldKey {
+			return "", errors.New("Der Termin wurde inzwischen geändert. Lade ihn erneut.")
+		}
+	}
 	if event == "" {
 		internal, allocateErr := publicid.NextInteger(ctx, tx, "events")
 		if allocateErr != nil {
@@ -236,7 +267,9 @@ func (s *Service) Save(ctx context.Context, user int64, event string, d Draft, r
 	committed = true
 	audit.Content(ctx, "content.event_saved", strings.TrimSpace(d.Title), urls.Event(ref))
 	if validCoverKey(oldKey) && oldKey != coverKey && s.storage != nil {
-		_ = s.storage.Delete(context.WithoutCancel(ctx), oldKey)
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		_ = s.storage.Delete(cleanup, oldKey)
 	}
 	return ref, nil
 }

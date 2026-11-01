@@ -182,6 +182,8 @@ func prepare(ctx context.Context, db database.DBTX, userID int64, submission Sub
 
 // SaveDraft stores uploads without changing publicly available exam documents.
 func (s *Service) SaveDraft(ctx context.Context, userID int64, submission SubmissionDraft) (result UploadResult, err error) {
+	ctx, cancel := context.WithTimeout(ctx, storageOperationTimeout)
+	defer cancel()
 	if fields := submission.Validate(); len(fields) != 0 {
 		return result, fields
 	}
@@ -204,7 +206,34 @@ func (s *Service) SaveDraft(ctx context.Context, userID int64, submission Submis
 	if !ok {
 		return result, ErrStorage
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	var attempts []string
+	var tx *sql.Tx
+	committed := false
+	defer func() {
+		if committed {
+			return
+		}
+		if tx != nil {
+			tx.Rollback()
+		}
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		for _, key := range attempts {
+			if cleanupErr := storage.Delete(cleanup, key); cleanupErr != nil {
+				err = errors.Join(err, fmt.Errorf("remove uncommitted object: %w", cleanupErr))
+				_, queueErr := s.db.ExecContext(cleanup, "INSERT OR IGNORE INTO archive_blob_cleanup(blob_key) VALUES(?)", key)
+				err = errors.Join(err, queueErr)
+			}
+		}
+	}()
+	objects := make([]stagedObject, len(submission.Documents))
+	for i, document := range submission.Documents {
+		objects[i], err = stageObject(ctx, s.db, storage, document, &attempts)
+		if err != nil {
+			return result, err
+		}
+	}
+	tx, err = s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return result, err
 	}
@@ -222,23 +251,6 @@ func (s *Service) SaveDraft(ctx context.Context, userID int64, submission Submis
 	if err != nil {
 		return result, err
 	}
-	var attempts []string
-	committed := false
-	defer func() {
-		if committed {
-			return
-		}
-		tx.Rollback()
-		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-		defer cancel()
-		for _, key := range attempts {
-			if cleanupErr := storage.Delete(cleanup, key); cleanupErr != nil {
-				err = errors.Join(err, fmt.Errorf("remove uncommitted object: %w", cleanupErr))
-				_, queueErr := s.db.ExecContext(cleanup, "INSERT OR IGNORE INTO archive_blob_cleanup(blob_key) VALUES(?)", key)
-				err = errors.Join(err, queueErr)
-			}
-		}
-	}()
 	submissionID := submission.SubmissionID
 	if submissionID == "" {
 		submissionID = publicid.New()
@@ -274,8 +286,8 @@ func (s *Service) SaveDraft(ctx context.Context, userID int64, submission Submis
 		}
 	}
 	seen := map[string]bool{}
-	for _, document := range submission.Documents {
-		checksum, err := storeObject(ctx, tx, storage, document, &attempts)
+	for i, document := range submission.Documents {
+		checksum, err := objects[i].attach(ctx, tx)
 		if err != nil {
 			return result, err
 		}

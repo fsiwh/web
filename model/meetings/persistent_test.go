@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fachschaftinformatik/web/internal/content"
 	"github.com/fachschaftinformatik/web/internal/database"
 	"github.com/fachschaftinformatik/web/storage"
 )
@@ -86,6 +87,18 @@ func persistentFixture(t *testing.T) (*Store, *meetingBlobs, func() *Store) {
 	t.Helper()
 	dsn := filepath.Join(t.TempDir(), "meetings.sqlite") + "?_pragma=busy_timeout(5000)"
 	if err := database.Migrate(dsn, log.New(io.Discard, "", 0)); err != nil {
+		t.Fatal(err)
+	}
+	seed, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = seed.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES
+		(1,'first@example.org','First','hash','admin',1,1),
+		(42,'owner@example.org','Owner','hash','editor',1,1),
+		(43,'other@example.org','Other','hash','editor',1,1)`)
+	seed.Close()
+	if err != nil {
 		t.Fatal(err)
 	}
 	b := &meetingBlobs{objects: make(map[string][]byte)}
@@ -190,7 +203,7 @@ func TestPersistentMeetingReusesContentAndRetriesCleanup(t *testing.T) {
 	}
 }
 
-func TestPersistentMeetingReplacementWaitsForDownload(t *testing.T) {
+func TestPersistentMeetingReplacementDoesNotBlockDownloadSnapshot(t *testing.T) {
 	s, b, reopen := persistentFixture(t)
 	p := meetingDraft("draft")
 	if err := s.Save(p); err != nil {
@@ -214,19 +227,99 @@ func TestPersistentMeetingReplacementWaitsForDownload(t *testing.T) {
 	go func() { saved <- other.Save(replacement) }()
 	select {
 	case err := <-saved:
+		if err != nil {
+			close(release)
+			t.Fatal(err)
+		}
+	case <-time.After(2 * time.Second):
 		close(release)
-		t.Fatalf("replacement completed before download snapshot: %v", err)
-	case <-time.After(50 * time.Millisecond):
+		t.Fatal("slow download blocked an independent save")
 	}
 	close(release)
 	if err := <-read; err != nil {
 		t.Fatal(err)
 	}
-	if err := <-saved; err != nil {
-		t.Fatal(err)
-	}
 	if len(b.objects) != 1 {
 		t.Fatal("superseded blob was not cleaned")
+	}
+}
+
+func TestPersistentMeetingPublishRejectsConcurrentReplacement(t *testing.T) {
+	s, b, reopen := persistentFixture(t)
+	p := meetingDraft("draft")
+	if err := s.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	other := reopen()
+	started, release := make(chan struct{}), make(chan struct{})
+	b.readStarted, b.readRelease = started, release
+	finished := make(chan error, 1)
+	go func() { finished <- s.Publish(p.ID, p.Owner) }()
+	<-started
+	p.Data = []byte("%PDF-1.4\nreplacement\n%%EOF")
+	if err := other.Save(p); err != nil {
+		close(release)
+		t.Fatal(err)
+	}
+	close(release)
+	if err := <-finished; err == nil {
+		t.Fatal("published bytes that were not verified by this operation")
+	}
+	got, ok, err := s.GetWithError(p.ID)
+	if err != nil || !ok || got.Published || !bytes.Equal(got.Data, p.Data) {
+		t.Fatal("concurrent publication changed replacement", got, err)
+	}
+}
+
+func TestPersistentMeetingPublishRechecksRevokedAccount(t *testing.T) {
+	s, b, _ := persistentFixture(t)
+	p := meetingDraft("draft")
+	if err := s.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	started, release := make(chan struct{}), make(chan struct{})
+	b.readStarted, b.readRelease = started, release
+	finished := make(chan error, 1)
+	go func() { finished <- s.Publish(p.ID, p.Owner) }()
+	<-started
+	if _, err := s.db.Exec("UPDATE users SET active=0 WHERE id=42"); err != nil {
+		close(release)
+		t.Fatal(err)
+	}
+	close(release)
+	if err := <-finished; !errors.Is(err, content.ErrForbidden) {
+		t.Fatal("revoked account published a draft", err)
+	}
+	got, ok, err := s.GetWithError(p.ID)
+	if err != nil || !ok || got.Published {
+		t.Fatal("revoked publication changed draft", got, err)
+	}
+}
+
+type revokingMeetingUpload struct {
+	storage.Provider
+	revoke func() error
+}
+
+func (s revokingMeetingUpload) Upload(ctx context.Context, key string, input io.Reader, size int64, mime string) error {
+	if err := s.Provider.Upload(ctx, key, input, size, mime); err != nil {
+		return err
+	}
+	return s.revoke()
+}
+
+func TestPersistentMeetingSaveRechecksRevokedAccount(t *testing.T) {
+	s, b, _ := persistentFixture(t)
+	s.blobs = revokingMeetingUpload{Provider: b, revoke: func() error {
+		_, err := s.db.Exec("UPDATE users SET role='user' WHERE id=42")
+		return err
+	}}
+	if err := s.Save(meetingDraft("draft")); !errors.Is(err, content.ErrForbidden) {
+		t.Fatal("demoted account saved a draft", err)
+	}
+	var count int
+	if err := s.db.QueryRow("SELECT count(*) FROM meeting_publications").Scan(&count); err != nil || count != 0 || len(b.objects) != 0 {
+		t.Fatal("revoked upload left content behind", count, err)
 	}
 }
 

@@ -453,6 +453,12 @@ func (s *Service) ConsumeToken(ctx context.Context, value, kind, password string
 	defer tx.Rollback()
 	var userID int64
 	var replacement, previous string
+	// Verification reads pending identity changes before consuming the token.
+	// Take the writer lock first so concurrent consumers cannot upgrade a stale
+	// WAL snapshot; the loser must see an already consumed link, not a DB error.
+	if _, err := tx.ExecContext(ctx, "UPDATE user_tokens SET id=id WHERE id=?", digest(value)); err != nil {
+		return err
+	}
 	if kind == "verify" {
 		err := tx.QueryRowContext(ctx, `SELECT c.email,c.previous_email FROM account_email_changes c JOIN users u ON u.id=c.user_id WHERE c.token_id=? AND u.active=1 AND u.verified=1 AND u.deleted_at IS NULL AND lower(u.email)=lower(c.previous_email)`, digest(value)).Scan(&replacement, &previous)
 		if err != nil && !errors.Is(err, sql.ErrNoRows) {

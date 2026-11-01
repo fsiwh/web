@@ -54,7 +54,7 @@ func (c *Handler) Document(w http.ResponseWriter, r *http.Request) {
 		c.serverError(w, err)
 		return
 	}
-	p, ok, err := c.meetings.GetWithError(internal)
+	p, ok, err := c.meetings.GetContext(r.Context(), internal)
 	if err != nil {
 		c.serverError(w, err)
 		return
