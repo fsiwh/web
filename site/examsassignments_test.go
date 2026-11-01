@@ -24,7 +24,7 @@ func TestExamsAssignmentChoicesAndSettingsDefaults(t *testing.T) {
 	if _, err := db.Exec(`INSERT INTO programs(id,name) VALUES(1,'Informatik (B. Sc.)'),(2,'Wirtschaftsinformatik (B. Sc.)'),(3,'Informatik (M. Sc.)');
     INSERT INTO program_versions(program_id,name) VALUES(1,2016),(1,2023),(2,2023),(3,2016);
     INSERT INTO modules(id,program_id,name) VALUES(10,1,'Mathematik'),(20,2,'Mathematik'),(30,3,'Mathematik');
-    INSERT INTO users(id,email,name,password,active,verified,program_id) VALUES(1,'preferences@fsv-wh.de','Person','unused',1,1,1);
+    INSERT INTO users(id,email,name,password,active,verified,program_id) VALUES(1,'preferences@council.example.invalid','Person','unused',1,1,1);
     INSERT INTO archive(id,group_id,user_id,module_id,version,exam_date,access_key,mime_type,nbytes,checksum) VALUES
     (100,100,1,10,2016,'2026-01-01','a','application/pdf',5,'one'),(200,200,1,20,2023,'2026-02-01','b','application/pdf',5,'two');`); err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestExamsAssignmentChoicesAndSettingsDefaults(t *testing.T) {
 	if status, _, _ := b.get("/exams/settings"); status != 303 {
 		t.Fatal("anonymous account preferences exposed")
 	}
-	session, err := users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}).CreateSession(context.Background(), 1)
+	session, err := users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}}).CreateSession(context.Background(), 1)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -14,6 +14,8 @@ import (
 )
 
 func TestAccountPolicyMigrationPreservesUsersAndReferences(t *testing.T) {
+	// Pre-0013 fixtures must satisfy the historical real-domain CHECK constraint.
+	// Other tests use reserved example domains; keep the shipped schema intact.
 	path := filepath.Join(t.TempDir(), "site.db")
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -100,7 +102,7 @@ func TestEmbeddedMigrationsPreserveDataOnRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if _, err := db.Exec(`INSERT INTO users (id, email, name, password, password_reset_token) VALUES (42, 'kim@studmail.w-hs.de', 'Kim', 'existing-hash', 'existing-token')`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users (id, email, name, password, password_reset_token) VALUES (42, 'kim@students.example.invalid', 'Kim', 'existing-hash', 'existing-token')`); err != nil {
 		t.Fatal(err)
 	}
 	if err := Migrate(dsn, logger); err != nil {
@@ -116,6 +118,7 @@ func TestEmbeddedMigrationsPreserveDataOnRestart(t *testing.T) {
 }
 
 func TestArchiveMigrationPreservesAliasesHistoriesAndQualifications(t *testing.T) {
+	// This pre-0013 fixture must satisfy the historical email-domain CHECK.
 	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "archive.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -169,6 +172,7 @@ func TestArchiveMigrationPreservesAliasesHistoriesAndQualifications(t *testing.T
 }
 
 func TestCalendarMigrationPreservesLegacyDiscussions(t *testing.T) {
+	// This pre-0013 fixture must satisfy the historical email-domain CHECK.
 	db, err := sql.Open("sqlite", filepath.Join(t.TempDir(), "calendar.db"))
 	if err != nil {
 		t.Fatal(err)

@@ -38,7 +38,7 @@ func legacyUsersDatabase(t *testing.T) (*sql.DB, string) {
 func TestUnifiedUsersMigrationPreservesAccountsAndTeam(t *testing.T) {
 	db, path := legacyUsersDatabase(t)
 	if _, err := db.Exec(`
-		INSERT INTO users(id,name,email,password,role,active,verified) VALUES(42,'Account Name','UPPER@FSV-WH.DE','existing-hash','admin',1,1);
+		INSERT INTO users(id,name,email,password,role,active,verified) VALUES(42,'Account Name','UPPER@COUNCIL.EXAMPLE.INVALID','existing-hash','admin',1,1);
 		INSERT INTO people(id,name,email,user_id,position,public_name) VALUES('linked','Stale Name','public@example.org',42,0,'Public Display Name'),('unlinked','New Account','new@example.org',NULL,1,'');
 		INSERT INTO responsibilities(id,group_name,title,email,position) VALUES('finance','board','Finanzen','finance@example.org',0),('sport','departments','Sport','',1);
 		INSERT INTO responsibility_members(responsibility_id,person_id,position) VALUES('finance','linked',0),('sport','linked',1),('sport','unlinked',0);
@@ -50,7 +50,7 @@ func TestUnifiedUsersMigrationPreservesAccountsAndTeam(t *testing.T) {
 		t.Fatal(err)
 	}
 	var name, email, password, role, publicEmail string
-	if err := db.QueryRow(`SELECT name,email,password,role,public_email FROM users WHERE id=42`).Scan(&name, &email, &password, &role, &publicEmail); err != nil || name != "Account Name" || email != "upper@fsv-wh.de" || password != "existing-hash" || role != "admin" || publicEmail != "public@example.org" {
+	if err := db.QueryRow(`SELECT name,email,password,role,public_email FROM users WHERE id=42`).Scan(&name, &email, &password, &role, &publicEmail); err != nil || name != "Account Name" || email != "upper@council.example.invalid" || password != "existing-hash" || role != "admin" || publicEmail != "public@example.org" {
 		t.Fatal("account data changed", name, email, password, role, publicEmail, err)
 	}
 	var count int
@@ -85,9 +85,9 @@ func TestUnifiedUsersMigrationPreservesAccountsAndTeam(t *testing.T) {
 		t.Fatal("migration not restartable", err)
 	}
 	for _, statement := range []string{
-		`INSERT INTO users(email,name,password) VALUES('UPPER@fsv-wh.de','Duplicate','!')`,
-		`INSERT INTO users(email,name,password) VALUES('upper@fsv-wh.de','Duplicate','!')`,
-		`UPDATE users SET email='UPPER@FSV-WH.DE' WHERE id=42`,
+		`INSERT INTO users(email,name,password) VALUES('UPPER@council.example.invalid','Duplicate','!')`,
+		`INSERT INTO users(email,name,password) VALUES('upper@council.example.invalid','Duplicate','!')`,
+		`UPDATE users SET email='UPPER@COUNCIL.EXAMPLE.INVALID' WHERE id=42`,
 	} {
 		if _, err := db.Exec(statement); err == nil {
 			t.Fatal("email boundary accepted invalid value", statement)

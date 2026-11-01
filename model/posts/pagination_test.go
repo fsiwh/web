@@ -21,7 +21,7 @@ func TestSQLPostFiltersPrecedePagingAndCommentsAreBounded(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,private) VALUES(1,'public@fsv-wh.de','Public','unused',0)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,private) VALUES(1,'public@council.example.invalid','Public','unused',0)`); err != nil {
 		t.Fatal(err)
 	}
 	for i := 1; i <= 45; i++ {

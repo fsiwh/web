@@ -28,7 +28,7 @@ func TestCreateUserDoesNotReuseDeletedHighestIdentity(t *testing.T) {
 		}
 		return user
 	}
-	first := create("first@studmail.w-hs.de")
+	first := create("first@students.example.invalid")
 	previous, err := s.PublicID(ctx, first.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -36,7 +36,7 @@ func TestCreateUserDoesNotReuseDeletedHighestIdentity(t *testing.T) {
 	if _, err := db.ExecContext(ctx, `DELETE FROM users WHERE id=?`, first.ID); err != nil {
 		t.Fatal(err)
 	}
-	second := create("second@studmail.w-hs.de")
+	second := create("second@students.example.invalid")
 	if second.ID <= first.ID {
 		t.Fatalf("internal ID reused: first=%d second=%d", first.ID, second.ID)
 	}

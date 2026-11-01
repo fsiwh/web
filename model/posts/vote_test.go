@@ -23,8 +23,8 @@ func TestVotesPersistWithoutChangingOtherUsersAndRespectVisibility(t *testing.T)
 	}
 	defer db.Close()
 	_, err = db.Exec(`INSERT INTO users(id,email,name,password,active,verified) VALUES
-	(1,'one@fsv-wh.de','One','unused',1,1),(2,'two@fsv-wh.de','Two','unused',1,1),
-	(3,'inactive@fsv-wh.de','Inactive','unused',0,1),(4,'unverified@fsv-wh.de','Unverified','unused',1,0);
+	(1,'one@council.example.invalid','One','unused',1,1),(2,'two@council.example.invalid','Two','unused',1,1),
+	(3,'inactive@council.example.invalid','Inactive','unused',0,1),(4,'unverified@council.example.invalid','Unverified','unused',1,0);
 	INSERT INTO discussion_posts(id,title,body,user_id,type,deleted_at) VALUES
 	(10,'Public post','Body',1,'discussion',NULL),(20,'Other post','Body',1,'discussion',NULL),(30,'Deleted post','Body',1,'discussion','2026-01-01T00:00:00Z');
 	INSERT INTO discussion_comments(id,post_id,user_id,text,deleted_at) VALUES

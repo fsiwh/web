@@ -119,7 +119,7 @@ func TestAccountBodyPolicyEnforcedBeforeHandler(t *testing.T) {
 }
 
 func TestUnknownRoutesIgnoreInvalidSessionCookie(t *testing.T) {
-	c, _ := testApplication(t, users.User{ID: 42, Name: "Test", Email: "test@studmail.w-hs.de", Active: true})
+	c, _ := testApplication(t, users.User{ID: 42, Name: "Test", Email: "test@students.example.invalid", Active: true})
 	r := httptest.NewRequest("GET", "/admin/legacy/42", nil)
 	r.AddCookie(&http.Cookie{Name: sessionCookie, Value: "invalid"})
 	w := httptest.NewRecorder()

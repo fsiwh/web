@@ -30,9 +30,9 @@ func eventService(t *testing.T) (*Service, *sql.DB, string) {
 	}
 	t.Cleanup(func() { db.Close() })
 	_, err = db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES
-	(1,'admin@fsv-wh.de','Admin','unused','admin',1,1),(2,'editor@fsv-wh.de','Editor','unused','editor',1,1),
-	(3,'user@fsv-wh.de','User','unused','user',1,1),(4,'inactive@fsv-wh.de','Inactive','unused','admin',0,1),
-	(5,'unverified@fsv-wh.de','Unverified','unused','editor',1,0),(6,'deleted@fsv-wh.de','Deleted','unused','editor',1,1);
+	(1,'admin@council.example.invalid','Admin','unused','admin',1,1),(2,'editor@council.example.invalid','Editor','unused','editor',1,1),
+	(3,'user@council.example.invalid','User','unused','user',1,1),(4,'inactive@council.example.invalid','Inactive','unused','admin',0,1),
+	(5,'unverified@council.example.invalid','Unverified','unused','editor',1,0),(6,'deleted@council.example.invalid','Deleted','unused','editor',1,1);
 	UPDATE users SET deleted_at='2026-01-01T00:00:00Z' WHERE id=6;`)
 	if err != nil {
 		t.Fatal(err)

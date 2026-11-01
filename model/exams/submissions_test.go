@@ -10,7 +10,7 @@ import (
 func reviewService(t *testing.T) (*Service, *sql.DB) {
 	t.Helper()
 	s, db := examsService(t)
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (2,'reviewer@fsv-wh.de','Reviewer','unused','editor',1,1),(3,'reader@fsv-wh.de','Reader','unused','user',1,1)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (2,'reviewer@council.example.invalid','Reviewer','unused','editor',1,1),(3,'reader@council.example.invalid','Reader','unused','user',1,1)`); err != nil {
 		t.Fatal(err)
 	}
 	return s, db

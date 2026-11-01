@@ -14,14 +14,14 @@ import (
 
 func TestLivePostsRoutingCSRFAndRestart(t *testing.T) {
 	b, db := identityBrowser(t)
-	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (42,'author@studmail.w-hs.de','Autor','unused','user',1,1),(43,'other@studmail.w-hs.de','Andere Person','unused','user',1,1)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES (42,'author@students.example.invalid','Autor','unused','user',1,1),(43,'other@students.example.invalid','Andere Person','unused','user',1,1)`); err != nil {
 		t.Fatal(err)
 	}
 	seedPublicRefs(t, db)
 	if status, _, headers := b.get("/posts/create"); status != 303 || headers.Get("Location") != "/login" {
 		t.Fatal("anonymous forum writes are not protected")
 	}
-	identity := users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}})
+	identity := users.NewService(db, "https://example.org", users.DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}})
 	session, err := identity.CreateSession(context.Background(), 42)
 	if err != nil {
 		t.Fatal(err)

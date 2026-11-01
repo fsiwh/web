@@ -26,7 +26,7 @@ func examsService(t *testing.T) (*Service, *sql.DB) {
 INSERT INTO programs (id,name) VALUES (1,'Informatik (B. Sc.)'),(2,'Informatik (M. Sc.)');
 INSERT INTO program_versions (program_id,name) VALUES (1,'2017'),(1,'2023'),(2,'2023');
 INSERT INTO modules (id,program_id,name,alias) VALUES (10,1,'Datenbanken','SQL'),(11,2,'Datenbanken II',NULL),(12,1,'Ohne Upload',NULL);
-INSERT INTO users (id,email,name,password,active,verified) VALUES (1,'archive@fsv-wh.de','Person','unused',1,1);
+INSERT INTO users (id,email,name,password,active,verified) VALUES (1,'archive@council.example.invalid','Person','unused',1,1);
 INSERT INTO archive (id,group_id,user_id,module_id,version,exam_date,is_latest,access_key,mime_type,nbytes,checksum) VALUES
 (100,100,1,10,'2017','2024-01-01',0,'old','application/pdf',5,'checksum'),
 (101,100,1,10,'2017','2024-01-01',1,'latest','application/pdf',5,'checksum'),

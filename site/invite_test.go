@@ -15,10 +15,10 @@ func TestUserInvitationRegistrationJourney(t *testing.T) {
 	for _, role := range []string{"editor", "admin"} {
 		t.Run(role, func(t *testing.T) {
 			b, db := identityBrowser(t)
-			if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'admin@fsv-wh.de','Admin','unused','admin',1,1)`); err != nil {
+			if _, err := db.Exec(`INSERT INTO users(id,email,name,password,role,active,verified) VALUES(42,'admin@council.example.invalid','Admin','unused','admin',1,1)`); err != nil {
 				t.Fatal(err)
 			}
-			identity := users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"fsv-wh.de", "studmail.w-hs.de"}})
+			identity := users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"council.example.invalid", "students.example.invalid"}})
 			session, err := identity.CreateSession(context.Background(), 42)
 			if err != nil {
 				t.Fatal(err)
@@ -91,13 +91,13 @@ func TestUserInvitationRegistrationJourney(t *testing.T) {
 			}
 			form.Set("step", "details")
 			form.Set("name", "Neue Person")
-			form.Set("email", "new@studmail.w-hs.de")
+			form.Set("email", "new@students.example.invalid")
 			if status, _, _ = b.post("/admin/users/create", form); status != 303 {
 				t.Fatal("invitation failed", status)
 			}
 			var link string
 			var id int64
-			if err := db.QueryRow(`SELECT id FROM users WHERE email='new@studmail.w-hs.de'`).Scan(&id); err != nil {
+			if err := db.QueryRow(`SELECT id FROM users WHERE email='new@students.example.invalid'`).Scan(&id); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.QueryRow(`SELECT link FROM mail_outbox WHERE user_id=?`, id).Scan(&link); err != nil {
@@ -112,12 +112,12 @@ func TestUserInvitationRegistrationJourney(t *testing.T) {
 			if status != 200 || !strings.Contains(body, `id="invite-email"`) || !strings.Contains(body, "disabled") {
 				t.Fatal("fixed invitation fields missing")
 			}
-			accept := url.Values{"csrf": {csrfFrom(t, body)}, "token": {target.Query().Get("token")}, "password": {"secure password"}, "name": {"Attacker"}, "email": {"attacker@fsv-wh.de"}, "role": {"admin"}}
+			accept := url.Values{"csrf": {csrfFrom(t, body)}, "token": {target.Query().Get("token")}, "password": {"secure password"}, "name": {"Attacker"}, "email": {"attacker@council.example.invalid"}, "role": {"admin"}}
 			if status, _, _ := invitee.post("/invitation/accept", accept); status != 303 {
 				t.Fatal("accept failed", status)
 			}
 			var name, email, storedRole string
-			if err := db.QueryRow(`SELECT name,email,role FROM users WHERE id=?`, id).Scan(&name, &email, &storedRole); err != nil || name != "Neue Person" || email != "new@studmail.w-hs.de" || storedRole != role {
+			if err := db.QueryRow(`SELECT name,email,role FROM users WHERE id=?`, id).Scan(&name, &email, &storedRole); err != nil || name != "Neue Person" || email != "new@students.example.invalid" || storedRole != role {
 				t.Fatal("invitation details changed", err)
 			}
 			_, body, _ = invitee.get("/login")

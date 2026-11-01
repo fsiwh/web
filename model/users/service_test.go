@@ -26,7 +26,7 @@ func testService(t *testing.T) (*Service, *sql.DB) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	return NewService(db, "https://example.org", DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}}), db
+	return NewService(db, "https://example.org", DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}}), db
 }
 
 func TestExistingCredentialsAndPersistentSessionPolicy(t *testing.T) {
@@ -36,10 +36,10 @@ func TestExistingCredentialsAndPersistentSessionPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'existing@fsv-wh.de','Existing',?,'admin',1,1)`, string(hash)); err != nil {
+	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'existing@council.example.invalid','Existing',?,'admin',1,1)`, string(hash)); err != nil {
 		t.Fatal(err)
 	}
-	id, err := s.Login(ctx, "existing@fsv-wh.de", "existing password")
+	id, err := s.Login(ctx, "existing@council.example.invalid", "existing password")
 	if err != nil || id != 42 {
 		t.Fatalf("legacy login: %d %v", id, err)
 	}
@@ -47,7 +47,7 @@ func TestExistingCredentialsAndPersistentSessionPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	restarted := NewService(db, "https://example.org", DomainPolicy{Registration: []string{"studmail.w-hs.de"}, Accounts: []string{"studmail.w-hs.de", "fsv-wh.de"}})
+	restarted := NewService(db, "https://example.org", DomainPolicy{Registration: []string{"students.example.invalid"}, Accounts: []string{"students.example.invalid", "council.example.invalid"}})
 	loaded, err := restarted.Session(ctx, session.ID)
 	if err != nil || loaded == nil || !loaded.CanAdmin() || loaded.CSRF != session.CSRF {
 		t.Fatalf("persisted session: %+v %v", loaded, err)
@@ -66,7 +66,7 @@ func TestExistingCredentialsAndPersistentSessionPolicy(t *testing.T) {
 	if err != nil || loaded != nil {
 		t.Fatal("inactive user retained session")
 	}
-	if _, err := s.Login(ctx, "existing@fsv-wh.de", "existing password"); !errors.Is(err, ErrInactive) {
+	if _, err := s.Login(ctx, "existing@council.example.invalid", "existing password"); !errors.Is(err, ErrInactive) {
 		t.Fatal(err)
 	}
 }
@@ -95,10 +95,10 @@ func TestRegistrationVerificationAndSingleUseReset(t *testing.T) {
 	s, db := testService(t)
 	ctx := context.Background()
 	password := strings.Repeat("🔐", 40)
-	if err := s.Register(ctx, "Kim Beispiel", "KIM@studmail.w-hs.de", password, "", "", ""); err != nil {
+	if err := s.Register(ctx, "Kim Beispiel", "KIM@students.example.invalid", password, "", "", ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.Login(ctx, "kim@studmail.w-hs.de", password); !errors.Is(err, ErrUnverified) {
+	if _, err := s.Login(ctx, "kim@students.example.invalid", password); !errors.Is(err, ErrUnverified) {
 		t.Fatal(err)
 	}
 	verify := queuedToken(t, db, "verify")
@@ -108,7 +108,7 @@ func TestRegistrationVerificationAndSingleUseReset(t *testing.T) {
 	if err := s.ConsumeToken(ctx, verify, "verify", ""); !errors.Is(err, ErrToken) {
 		t.Fatal("verification link reused")
 	}
-	userID, err := s.Login(ctx, "kim@studmail.w-hs.de", password)
+	userID, err := s.Login(ctx, "kim@students.example.invalid", password)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,10 +119,10 @@ func TestRegistrationVerificationAndSingleUseReset(t *testing.T) {
 	if session.CanAdmin() {
 		t.Fatal("registration granted administration")
 	}
-	if err := s.RequestReset(ctx, "missing@fsv-wh.de"); err != nil {
+	if err := s.RequestReset(ctx, "missing@council.example.invalid"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.RequestReset(ctx, "kim@studmail.w-hs.de"); err != nil {
+	if err := s.RequestReset(ctx, "kim@students.example.invalid"); err != nil {
 		t.Fatal(err)
 	}
 	reset := queuedToken(t, db, "reset")
@@ -135,10 +135,10 @@ func TestRegistrationVerificationAndSingleUseReset(t *testing.T) {
 	if loaded, err := s.Session(ctx, session.ID); err != nil || loaded != nil {
 		t.Fatal("password reset retained session")
 	}
-	if _, err := s.Login(ctx, "kim@studmail.w-hs.de", password); !errors.Is(err, ErrCredentials) {
+	if _, err := s.Login(ctx, "kim@students.example.invalid", password); !errors.Is(err, ErrCredentials) {
 		t.Fatal("old password still works")
 	}
-	if _, err := s.Login(ctx, "kim@studmail.w-hs.de", "new password"); err != nil {
+	if _, err := s.Login(ctx, "kim@students.example.invalid", "new password"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -167,16 +167,16 @@ func (m *queuedMailer) SendPasswordResetEmail(to, name, link string) error {
 func TestOutboxRetriesAndExpiredTokens(t *testing.T) {
 	s, db := testService(t)
 	ctx := context.Background()
-	for _, email := range []string{"first@studmail.w-hs.de", "second@studmail.w-hs.de"} {
+	for _, email := range []string{"first@students.example.invalid", "second@students.example.invalid"} {
 		if err := s.Register(ctx, "Test Person", email, "valid password", "", "", ""); err != nil {
 			t.Fatal(err)
 		}
 	}
-	mailer := &queuedMailer{failTo: "first@studmail.w-hs.de"}
+	mailer := &queuedMailer{failTo: "first@students.example.invalid"}
 	if err := s.DeliverMail(ctx, mailer); err == nil {
 		t.Fatal("delivery failure not reported")
 	}
-	if len(mailer.delivered) != 1 || mailer.delivered[0] != "second@studmail.w-hs.de" {
+	if len(mailer.delivered) != 1 || mailer.delivered[0] != "second@students.example.invalid" {
 		t.Fatal("one failed message blocked later mail")
 	}
 	var pending int
@@ -190,7 +190,7 @@ func TestOutboxRetriesAndExpiredTokens(t *testing.T) {
 	if len(mailer.delivered) != 2 {
 		t.Fatal("retry lost or duplicated mail")
 	}
-	if err := s.RequestReset(ctx, "first@studmail.w-hs.de"); err != nil {
+	if err := s.RequestReset(ctx, "first@students.example.invalid"); err != nil {
 		t.Fatal(err)
 	}
 	value := queuedToken(t, db, "reset")
@@ -219,7 +219,7 @@ func TestInvalidResetLinkRejectedBeforePasswordWork(t *testing.T) {
 func TestInvitationPromotionRevokesExistingSessions(t *testing.T) {
 	s, db := testService(t)
 	ctx := context.Background()
-	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'existing@fsv-wh.de','Existing','!','user',1,1)`); err != nil {
+	if _, err := db.Exec(`INSERT INTO users (id,email,name,password,role,active,verified) VALUES (42,'existing@council.example.invalid','Existing','!','user',1,1)`); err != nil {
 		t.Fatal(err)
 	}
 	session, err := s.CreateSession(ctx, 42)
@@ -231,7 +231,7 @@ func TestInvitationPromotionRevokesExistingSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback()
-	user, err := s.Invite(ctx, tx, "Existing", "existing@fsv-wh.de")
+	user, err := s.Invite(ctx, tx, "Existing", "existing@council.example.invalid")
 	if err != nil {
 		t.Fatal(err)
 	}

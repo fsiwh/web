@@ -33,8 +33,8 @@ The application does not seed members or organization content. Legacy content
 imports and data conversion are managed outside this repository.
 Start the application from the repository root with explicit account-domain policy:
 ```bash
-export ACCOUNT_DOMAINS=studmail.w-hs.de,fsv-wh.de,fsi-wh.de
-export REGISTRATION_DOMAINS=studmail.w-hs.de
+export ACCOUNT_DOMAINS=students.example.invalid,council.example.invalid,portal.example.invalid
+export REGISTRATION_DOMAINS=students.example.invalid
 nix develop -c go run . -database .dev-data/local/sqlite.db -blobs .dev-data/local/blobs
 ```
 
@@ -53,6 +53,27 @@ Use `nix develop` for the locked Go toolchain, or prefix a command with
 must match `go.mod`, which also selects the version in CI; keep Docker aligned.
 The shell supplies development account-domain defaults when those variables are
 unset, preserving explicit values (including empty registration domains).
+
+### Test and example addresses
+
+Use reserved domains for synthetic email addresses, fixture domain policies, and
+illustrative configuration. Prefer `person@example.invalid`,
+`person@students.example.invalid`, and `person@council.example.invalid` for email
+data that must never identify a real mailbox. Keep distinct domains where a test
+checks registration, account access, subdomains, or lookalike-domain rejection.
+These addresses are syntactically valid; `.invalid` means their DNS names do not
+exist, not that the application's email parser should reject them.
+
+[RFC 2606 §§2–3](https://www.rfc-editor.org/rfc/rfc2606) reserves `.test`,
+`.example`, `.invalid`, `.localhost`, and `example.com`, `example.net`, and
+`example.org`. [RFC 6761 §§6.4–6.5](https://www.rfc-editor.org/rfc/rfc6761)
+specifies NXDOMAIN handling for `.invalid`; the example domains may resolve
+normally. Use loopback addresses for local test servers.
+
+Historical migration tests that must satisfy the original email-domain `CHECK`
+constraint retain legacy addresses until migration 0013 removes that constraint.
+Actual project contacts, upstream source URLs, and production configuration use
+their operational addresses rather than synthetic examples.
 
 Run `go test -race ./...` and `go vet ./...`. Templates and browser assets are
 embedded; rebuild the executable after changing them.
@@ -105,9 +126,11 @@ Account, session, submission and form-action events use the shared
 [`audit.Audit(...)` function](audit.md), with request correlation and no credentials
 or recovery links in audit output.
 
-Set `SMTP_FROM` to the automated sender mailbox address (production:
-`portal@fsi-wh.de`). An optional `SMTP_REPLY_TO` routes replies to the monitored
-contact address (`team@fsi-wh.de`). Email headers use the organization short name.
+Set `SMTP_FROM` to the automated sender mailbox address (for example,
+`portal@example.invalid`). An optional `SMTP_REPLY_TO` routes replies to the monitored
+contact address (for example, `team@example.invalid`). Replace these reserved
+examples with real authorized addresses when configuring mail delivery.
+Email headers use the organization short name.
 The SMTP provider must authorize the sending domain; a sending-only address does
 not require its own inbox. The reply address must receive mail.
 

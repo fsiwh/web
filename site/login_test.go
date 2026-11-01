@@ -20,12 +20,12 @@ func TestLoginPreview(t *testing.T) {
 	}{
 		{"empty", "", "", 422, "Gib deine E-Mail-Adresse ein."},
 		{"invalid email", "not-an-email", "private-test-password", 422, "Gib eine vollständige E-Mail-Adresse ein"},
-		{"display name is not email", "Name <name@studmail.w-hs.de>", "private-test-password", 422, "Gib eine vollständige E-Mail-Adresse ein"},
+		{"display name is not email", "Name <name@students.example.invalid>", "private-test-password", 422, "Gib eine vollständige E-Mail-Adresse ein"},
 		{"other domain", "name@example.org", "private-test-password", 422, "Verwende eine E-Mail-Adresse mit"},
-		{"missing password", "name@studmail.w-hs.de", "", 422, "Gib dein Passwort ein."},
-		{"unknown user", "name@studmail.w-hs.de", "private-test-password", 422, "E-Mail-Adresse oder Passwort ist falsch."},
-		{"staff domain", "name@fsv-wh.de", "private-test-password", 422, "E-Mail-Adresse oder Passwort ist falsch."},
-		{"trim and domain case", "  Name@STUDMAIL.W-HS.DE  ", "private-test-password", 422, "E-Mail-Adresse oder Passwort ist falsch."},
+		{"missing password", "name@students.example.invalid", "", 422, "Gib dein Passwort ein."},
+		{"unknown user", "name@students.example.invalid", "private-test-password", 422, "E-Mail-Adresse oder Passwort ist falsch."},
+		{"staff domain", "name@council.example.invalid", "private-test-password", 422, "E-Mail-Adresse oder Passwort ist falsch."},
+		{"trim and domain case", "  Name@STUDENTS.EXAMPLE.INVALID  ", "private-test-password", 422, "E-Mail-Adresse oder Passwort ist falsch."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			form := url.Values{"email": {tc.email}, "password": {tc.password}}

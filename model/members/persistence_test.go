@@ -32,7 +32,7 @@ func membershipStore(t *testing.T) (*Store, *users.Service, *sql.DB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return s, users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"fsv-wh.de", "studmail.w-hs.de"}}), db
+	return s, users.NewService(db, "https://example.org", users.DomainPolicy{Accounts: []string{"council.example.invalid", "students.example.invalid"}}), db
 }
 
 func inviteToken(t *testing.T, db *sql.DB) string {
@@ -52,11 +52,11 @@ func TestAccountInvitationWithMultipleFunctions(t *testing.T) {
 	s, identity, db := membershipStore(t)
 	ctx := context.Background()
 	ids := []string{s.Roles("board")[0].PublicID, s.Roles("departments")[0].PublicID}
-	if fields, err := s.InviteAccount(ctx, identity, "Alex Example", "ALEX@FSV-WH.DE", "editor", ids); err != nil || len(fields) > 0 {
+	if fields, err := s.InviteAccount(ctx, identity, "Alex Example", "ALEX@COUNCIL.EXAMPLE.INVALID", "editor", ids); err != nil || len(fields) > 0 {
 		t.Fatal(fields, err)
 	}
 	u := s.Members()[0]
-	if u.UserID == 0 || u.Confirmed || u.AccountEmail != "alex@fsv-wh.de" || u.Email != "" {
+	if u.UserID == 0 || u.Confirmed || u.AccountEmail != "alex@council.example.invalid" || u.Email != "" {
 		t.Fatal(u)
 	}
 	var count int
@@ -83,7 +83,7 @@ func TestAccountInvitationWithMultipleFunctions(t *testing.T) {
 	if err := identity.AcceptInvitation(ctx, current, "another password"); !errors.Is(err, users.ErrToken) {
 		t.Fatal("token reused", err)
 	}
-	if id, err := identity.Login(ctx, "alex@fsv-wh.de", "existing password"); err != nil || id != u.UserID {
+	if id, err := identity.Login(ctx, "alex@council.example.invalid", "existing password"); err != nil || id != u.UserID {
 		t.Fatal(id, err)
 	}
 	restarted, err := Open(ctx, db)
@@ -107,7 +107,7 @@ func TestAccountInvitationWithMultipleFunctions(t *testing.T) {
 func TestAdminInvitationAndExistingCredentials(t *testing.T) {
 	s, identity, db := membershipStore(t)
 	ctx := context.Background()
-	if fields, err := s.InviteAccount(ctx, identity, "Robin Example", "robin@fsv-wh.de", "admin", nil); err != nil || len(fields) > 0 {
+	if fields, err := s.InviteAccount(ctx, identity, "Robin Example", "robin@council.example.invalid", "admin", nil); err != nil || len(fields) > 0 {
 		t.Fatal(fields, err)
 	}
 	if err := identity.AcceptInvitation(ctx, inviteToken(t, db), "existing password"); err != nil {
@@ -121,7 +121,7 @@ func TestAdminInvitationAndExistingCredentials(t *testing.T) {
 	if err := db.QueryRow(`SELECT password FROM users WHERE id=?`, u.UserID).Scan(&hash); err != nil {
 		t.Fatal(err)
 	}
-	if fields, err := s.InviteAccount(ctx, identity, "Ignored Name", "robin@fsv-wh.de", "editor", []string{s.Roles("board")[0].PublicID}); err != nil || len(fields) > 0 {
+	if fields, err := s.InviteAccount(ctx, identity, "Ignored Name", "robin@council.example.invalid", "editor", []string{s.Roles("board")[0].PublicID}); err != nil || len(fields) > 0 {
 		t.Fatal(fields, err)
 	}
 	var role, password, name string
@@ -138,14 +138,14 @@ func TestInvitationValidationAndAtomicity(t *testing.T) {
 	s, identity, db := membershipStore(t)
 	ctx := context.Background()
 	for _, ids := range [][]string{nil, {"AAAAAAAAAAA"}} {
-		if fields, err := s.InviteAccount(ctx, identity, "Alex Example", "alex@fsv-wh.de", "editor", ids); err != nil || fields["functions"] == "" {
+		if fields, err := s.InviteAccount(ctx, identity, "Alex Example", "alex@council.example.invalid", "editor", ids); err != nil || fields["functions"] == "" {
 			t.Fatal(fields, err)
 		}
 	}
 	if _, err := db.Exec(`CREATE TRIGGER fail_assignment BEFORE INSERT ON user_functions BEGIN SELECT RAISE(FAIL,'forced assignment failure'); END`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.InviteAccount(ctx, identity, "Alex Example", "alex@fsv-wh.de", "editor", []string{s.Roles("board")[0].PublicID}); err == nil {
+	if _, err := s.InviteAccount(ctx, identity, "Alex Example", "alex@council.example.invalid", "editor", []string{s.Roles("board")[0].PublicID}); err == nil {
 		t.Fatal("assignment failure ignored")
 	}
 	var count int

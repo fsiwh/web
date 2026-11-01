@@ -20,7 +20,7 @@ func TestExamsPaginationKeepsFiltersAndGroupsModules(t *testing.T) {
 	}
 	defer storage.Close()
 	b, db := identityBrowserWithStorage(t, storage)
-	if _, err := db.Exec(`INSERT INTO programs(id,name) VALUES(1,'Informatik (B. Sc.)'); INSERT INTO program_versions(program_id,name) VALUES(1,2023); INSERT INTO users(id,email,name,password) VALUES(1,'pagination@fsv-wh.de','Person','unused')`); err != nil {
+	if _, err := db.Exec(`INSERT INTO programs(id,name) VALUES(1,'Informatik (B. Sc.)'); INSERT INTO program_versions(program_id,name) VALUES(1,2023); INSERT INTO users(id,email,name,password) VALUES(1,'pagination@council.example.invalid','Person','unused')`); err != nil {
 		t.Fatal(err)
 	}
 	for i := 1; i <= 45; i++ {

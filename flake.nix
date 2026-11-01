@@ -232,8 +232,8 @@
               GOTOOLCHAIN = "local";
               shellHook = ''
                 ${self.apps.${system}.vendor.program} "$PWD"
-                export ACCOUNT_DOMAINS="''${ACCOUNT_DOMAINS-studmail.w-hs.de,fsv-wh.de,fsi-wh.de}"
-                export REGISTRATION_DOMAINS="''${REGISTRATION_DOMAINS-studmail.w-hs.de}"
+                export ACCOUNT_DOMAINS="''${ACCOUNT_DOMAINS-students.example.invalid,council.example.invalid,portal.example.invalid}"
+                export REGISTRATION_DOMAINS="''${REGISTRATION_DOMAINS-students.example.invalid}"
               '';
             };
         });

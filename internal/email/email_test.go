@@ -57,7 +57,7 @@ func testSubmissionEmail(t *testing.T, send func(*Sender) error, path, content s
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(body), "https://fsi-wh.de"+path) || !strings.Contains(string(body), "Einreichung") || !strings.Contains(string(body), content) || strings.Contains(string(body), "token=") {
+		if !strings.Contains(string(body), "https://portal.example.invalid"+path) || !strings.Contains(string(body), "Einreichung") || !strings.Contains(string(body), content) || strings.Contains(string(body), "token=") {
 			t.Fatal("submission notification lost its link or expected content", string(body))
 		}
 	}
@@ -101,7 +101,7 @@ func captureEmail(t *testing.T, org *organization.Store, send func(*Sender) erro
 		}
 	}()
 	host, port, _ := net.SplitHostPort(listener.Addr().String())
-	sender := NewSender(&config.Config{Domain: "https://fsi-wh.de", SMTPHost: host, SMTPPort: port, SMTPFrom: "web@example.org"}, org)
+	sender := NewSender(&config.Config{Domain: "https://portal.example.invalid", SMTPHost: host, SMTPPort: port, SMTPFrom: "web@example.org"}, org)
 	if err := send(sender); err != nil {
 		t.Fatal(err)
 	}
@@ -196,11 +196,11 @@ func TestNotificationMIMEPreservesUnicodeAndActionLinks(t *testing.T) {
 }
 
 func TestNotificationSenderAndReplyAddress(t *testing.T) {
-	for _, reply := range []string{"", "team@fsi-wh.de", "invalid", "team@fsi-wh.de\r\nBcc: other@example.org"} {
+	for _, reply := range []string{"", "team@portal.example.invalid", "invalid", "team@portal.example.invalid\r\nBcc: other@example.org"} {
 		t.Run(reply, func(t *testing.T) {
-			sender := NewSender(&config.Config{SMTPFrom: "portal@fsi-wh.de", SMTPReplyTo: reply}, nil)
+			sender := NewSender(&config.Config{SMTPFrom: "portal@portal.example.invalid", SMTPReplyTo: reply}, nil)
 			raw, err := sender.message("user@example.org", notification{Organization: organization.Details{ShortName: "fsInformatik"}})
-			if reply != "" && reply != "team@fsi-wh.de" {
+			if reply != "" && reply != "team@portal.example.invalid" {
 				if err == nil {
 					t.Fatal("invalid reply address accepted")
 				}
@@ -214,7 +214,7 @@ func TestNotificationSenderAndReplyAddress(t *testing.T) {
 				t.Fatal(err)
 			}
 			from, err := mail.ParseAddress(message.Header.Get("From"))
-			if err != nil || from.Address != "portal@fsi-wh.de" || from.Name != "fsInformatik" {
+			if err != nil || from.Address != "portal@portal.example.invalid" || from.Name != "fsInformatik" {
 				t.Fatal("sender identity missing", err)
 			}
 			if reply == "" {

@@ -17,7 +17,7 @@ import (
 
 func TestAccountAuditCorrelatesRequestsWithoutLeakingSecrets(t *testing.T) {
 	handler, db := testApplication(t)
-	const email = "private-student@studmail.w-hs.de"
+	const email = "private-student@students.example.invalid"
 	const password = "private student password"
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	if err != nil {
