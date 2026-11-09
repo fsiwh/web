@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.13
 	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.5.2
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.6
-	github.com/aws/smithy-go v1.28.7
+	github.com/aws/smithy-go v1.28.8
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/pressly/goose/v3 v3.29.0
 	github.com/yuin/goldmark/v2 v2.1.14
