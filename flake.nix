@@ -139,7 +139,7 @@
             pname = "web";
             version = revision;
             src = pkgs.lib.cleanSource ./.;
-            vendorHash = "sha256-COV8urZ1uA6yYZicWNaohuezBjhz+FThVAHxGSG+LV8=";
+            vendorHash = "sha256-4h5wl36eQOE63SFxobTHXZK5nAwtYxFbSeo5WX6O2WE=";
             overrideModAttrs = _: {
               name = "web-go-modules";
               preBuild = "";
