@@ -30,7 +30,7 @@ require (
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20261014154017-6e7213df1bbf // indirect
 	github.com/riza-io/grpc-go v0.2.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spf13/pflag v1.1.0 // indirect
 	github.com/sqlc-dev/doubleclick v1.0.0 // indirect
 	github.com/sqlc-dev/sqlc v1.31.1 // indirect
 	github.com/tetratelabs/wazero v1.12.0 // indirect
