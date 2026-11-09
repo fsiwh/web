@@ -10,7 +10,7 @@ require (
 	github.com/aws/smithy-go v1.28.7
 	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/pressly/goose/v3 v3.29.0
-	github.com/yuin/goldmark/v2 v2.1.14
+	github.com/yuin/goldmark/v2 v2.1.15
 	golang.org/x/crypto v0.58.0
 	golang.org/x/image v0.47.0
 	golang.org/x/net v0.62.0
