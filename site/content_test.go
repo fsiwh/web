@@ -100,6 +100,10 @@ func TestMeetingInitialSaveFailureCanRetry(t *testing.T) {
 
 func TestMeetingDocuments(t *testing.T) {
 	handler, db := testApplication(t)
+	s, err := handler.identity.CreateSession(context.Background(), 900)
+	if err != nil {
+		t.Fatal(err)
+	}
 	objects, err := disk.New(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -131,10 +135,22 @@ func TestMeetingDocuments(t *testing.T) {
 				t.Fatal(err)
 			}
 			response := httptest.NewRecorder()
-			handler.ServeHTTP(response, httptest.NewRequest("GET", documentView(document).URL(), nil))
+			r := httptest.NewRequest("GET", documentView(document).URL(), nil)
+			for _, method := range []string{http.MethodGet, http.MethodHead} {
+				guest := httptest.NewRecorder()
+				handler.ServeHTTP(guest, httptest.NewRequest(method, r.URL.String(), nil))
+				if guest.Code != http.StatusSeeOther || guest.Header().Get("Location") != "/login" || guest.Header().Get("Cache-Control") != "private, no-store" {
+					t.Fatalf("historical PDF accessible without login: %s %d", method, guest.Code)
+				}
+			}
+			r.AddCookie(&http.Cookie{Name: sessionCookie, Value: s.ID})
+			handler.ServeHTTP(response, r)
 			content := response.Body.Bytes()
 			if response.Code != 200 || !strings.HasPrefix(response.Header().Get("Content-Type"), "application/pdf") {
 				t.Fatalf("PDF not served: %s (%d)", document.File, response.Code)
+			}
+			if response.Header().Get("Cache-Control") != "private, no-store" {
+				t.Fatal("historical PDF must not be cached publicly")
 			}
 			if len(content) != document.Bytes || fmt.Sprintf("%x", sha256.Sum256(content)) != document.SHA256 {
 				t.Fatalf("source integrity mismatch: %s", document.File)
@@ -195,14 +211,18 @@ func TestMeetingDraftUsesStableAccountOwner(t *testing.T) {
 	r = httptest.NewRequest(http.MethodGet, "/documents/"+ref, nil)
 	r.SetPathValue("id", ref)
 	recorder = httptest.NewRecorder()
-	c.Document(&sessionResponse{ResponseWriter: recorder}, r)
+	c.Document(&sessionResponse{ResponseWriter: recorder, session: &session{UserID: 43, Authenticated: true}}, r)
 	if recorder.Code != http.StatusOK {
-		t.Fatal("published document is not public")
+		t.Fatal("published document unavailable to another account")
 	}
 }
 
 func TestMeetingYears(t *testing.T) {
 	handler, err := testHandler(t)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := handler.identity.CreateSession(context.Background(), 900)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +237,9 @@ func TestMeetingYears(t *testing.T) {
 		{"?year=invalid", "Seite nicht gefunden", 404},
 	} {
 		response := httptest.NewRecorder()
-		handler.ServeHTTP(response, httptest.NewRequest("GET", "/meetings"+tc.query, nil))
+		r := httptest.NewRequest("GET", "/meetings"+tc.query, nil)
+		r.AddCookie(&http.Cookie{Name: sessionCookie, Value: s.ID})
+		handler.ServeHTTP(response, r)
 		if response.Code != tc.status || !strings.Contains(response.Body.String(), tc.want) {
 			t.Fatalf("%s: %d %s", tc.query, response.Code, response.Body.String())
 		}

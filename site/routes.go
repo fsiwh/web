@@ -33,7 +33,7 @@ func (c *Handler) routes() http.Handler {
 	register("POST /session/extend", routePolicy{passive: true, csrf: true, bodyLimit: 64 << 10}, c.ExtendSession)
 	register("GET /session/expired", routePolicy{passive: true}, c.SessionExpired)
 	registerAdmin(c, register)
-	register("GET "+urls.DocumentPattern, routePolicy{}, c.Document)
+	register("GET "+urls.DocumentPattern, routePolicy{authenticated: true, private: true}, c.Document)
 	register("GET "+urls.AssetsPath, routePolicy{passive: true, static: true}, http.StripPrefix(urls.AssetsPath, browserAssets()).ServeHTTP)
 	// Unknown routes do not run authentication or CSRF middleware.
 	router.HandleFunc("/", c.notFound)
@@ -86,7 +86,7 @@ func registerPages(c *Handler, register routeRegister) {
 			c.render(w, page.template, false, view.Page{Title: page.title, Active: page.template, About: true, Description: description})
 		})
 	}
-	register("GET "+urls.MeetingsPath, public, c.Meetings)
+	register("GET "+urls.MeetingsPath, routePolicy{authenticated: true, private: true}, c.Meetings)
 	register("GET "+urls.CommunityPath, public, func(w http.ResponseWriter, r *http.Request) {
 		c.render(w, "community", false, view.Page{Title: "Community", Active: "community", Community: true})
 	})

@@ -217,17 +217,20 @@ func TestPublicationReviewAndVisibility(t *testing.T) {
 		t.Fatal("publication failed")
 	}
 	if status, body, _ := other.get("/meetings?year=2027"); status != 200 || !strings.Contains(body, document) {
-		t.Fatal("published document missing from public archive")
+		t.Fatal("published document missing from meeting archive")
 	}
 	guest := newAdminBrowser(t, server)
-	if status, body, headers := guest.get(document); status != 200 || body != string(pdf) || headers.Get("Content-Type") != "application/pdf" {
-		t.Fatal("published PDF not publicly readable")
+	if status, _, headers := guest.get(document); status != 303 || headers.Get("Location") != "/login" {
+		t.Fatal("published PDF accessible without login")
+	}
+	if status, body, headers := other.get(document); status != 200 || body != string(pdf) || headers.Get("Content-Type") != "application/pdf" {
+		t.Fatal("published PDF unavailable after login")
 	}
 	// Repeated publish is idempotent rather than adding another document.
-	_, body, _ = guest.get("/meetings?year=2027")
+	_, body, _ = other.get("/meetings?year=2027")
 	count := strings.Count(body, document)
 	b.post(review, url.Values{"csrf": {b.csrf}})
-	_, body, _ = guest.get("/meetings?year=2027")
+	_, body, _ = other.get("/meetings?year=2027")
 	if count == 0 || strings.Count(body, document) != count {
 		t.Fatal("duplicate publication")
 	}
