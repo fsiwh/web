@@ -51,7 +51,7 @@ func TestConcreteRoutePolicies(t *testing.T) {
 	server := httptest.NewServer(c)
 	defer server.Close()
 	b := newAdminBrowser(t, server)
-	for _, path := range []string{"/posts/create", "/posts/1/edit", "/events/create", "/exams/settings", "/exams/documents/1", "/exams/submissions", "/admin/settings/identity", "/admin/roles/create", "/admin/submissions/1/review"} {
+	for _, path := range []string{"/meetings", "/meetings?year=2029", "/documents/1", "/posts/create", "/posts/1/edit", "/events/create", "/exams/settings", "/exams/documents/1", "/exams/submissions", "/admin/settings/identity", "/admin/roles/create", "/admin/submissions/1/review"} {
 		path = strings.ReplaceAll(path, "/1", "/AAAAAAAAAAA")
 		if code, _, h := b.get(path); code != 303 || h.Get("Location") != "/login" {
 			t.Fatalf("unprotected %s: %d", path, code)
@@ -240,8 +240,26 @@ func TestCanonicalMetadataAllowlist(t *testing.T) {
 
 func TestMeetingYearCanonicalAndEmptyCatalogue(t *testing.T) {
 	c, db := testApplication(t)
+	for _, path := range []string{"/meetings", "/meetings?year=2029"} {
+		for _, method := range []string{http.MethodGet, http.MethodHead} {
+			w := httptest.NewRecorder()
+			c.ServeHTTP(w, httptest.NewRequest(method, path, nil))
+			if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "/login" || w.Header().Get("Cache-Control") != "private, no-store" {
+				t.Fatalf("meeting catalogue accessible without login: %s %s: %d", method, path, w.Code)
+			}
+		}
+	}
+	s, err := c.identity.CreateSession(context.Background(), 900)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := func(path string) *http.Request {
+		r := httptest.NewRequest("GET", path, nil)
+		r.AddCookie(&http.Cookie{Name: sessionCookie, Value: s.ID})
+		return r
+	}
 	w := httptest.NewRecorder()
-	c.ServeHTTP(w, httptest.NewRequest("GET", "/meetings?year=2029", nil))
+	c.ServeHTTP(w, request("/meetings?year=2029"))
 	if w.Code != 200 || !strings.Contains(w.Body.String(), `rel="canonical" href="/meetings?year=2029"`) {
 		t.Fatal("historical meeting year lost its canonical address", w.Code)
 	}
@@ -249,7 +267,7 @@ func TestMeetingYearCanonicalAndEmptyCatalogue(t *testing.T) {
 		t.Fatal(err)
 	}
 	w = httptest.NewRecorder()
-	c.ServeHTTP(w, httptest.NewRequest("GET", "/meetings", nil))
+	c.ServeHTTP(w, request("/meetings"))
 	if w.Code != 200 {
 		t.Fatal("empty meeting catalogue must remain usable", w.Code)
 	}
