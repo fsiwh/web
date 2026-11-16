@@ -5,7 +5,7 @@ go 1.27.3
 tool github.com/sqlc-dev/sqlc/cmd/sqlc
 
 require (
-	cel.dev/expr v0.25.3 // indirect
+	cel.dev/expr v0.26.0 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
