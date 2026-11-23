@@ -84,9 +84,9 @@ jobs:
             ${{ runner.temp }}/coverage.html
             ${{ runner.temp }}/coverage.json
           if-no-files-found: error
-      - run: nix develop -c go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+      - run: nix develop -c go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...
       - name: Check development tool vulnerabilities
-        run: nix develop -c go -C tools run golang.org/x/vuln/cmd/govulncheck@v1.9.0 github.com/sqlc-dev/sqlc/cmd/sqlc
+        run: nix develop -c go -C tools run golang.org/x/vuln/cmd/govulncheck@v1.10.0 github.com/sqlc-dev/sqlc/cmd/sqlc
 
   test-assets:
     name: test:assets
